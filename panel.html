@@ -218,19 +218,26 @@
         const latClean = cleanCoordinate(item.lat, true);
         const lngClean = cleanCoordinate(item.lng, false);
 
-        if (latClean !== null && lngClean !== null) {
-          actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', '${latClean}', '${lngClean}')">📍 Ubicación</button>`);
-        } else {
-          actions.push(`<button class="btn-action btn-loc-no" onclick="showNoLocation('${escapeHtml(item.team)}')">📍 Sin GPS</button>`);
+        // SOLO MOSTRAR UBICACIÓN SI EL EQUIPO NO HA FINALIZADO
+        if (item.status !== "Finalizado") {
+          if (latClean !== null && lngClean !== null) {
+            actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', '${latClean}', '${lngClean}')">📍 Ubicación</button>`);
+          } else {
+            actions.push(`<button class="btn-action btn-loc-no" onclick="showNoLocation('${escapeHtml(item.team)}')">📍 Sin GPS</button>`);
+          }
         }
 
-        // ACTUALIZACIÓN EN TIEMPO REAL DEL MAPA SI ESTÁ ABIERTO
-        if (currentTrackedTeam && item.team === currentTrackedTeam && panelMap && panelMapMarker) {
-          if (latClean !== null && lngClean !== null) {
+        // SI EL MAPA ESTÁ ABIERTO Y EL EQUIPO FINALIZA, SE CIERRA EL MAPA
+        if (currentTrackedTeam && item.team === currentTrackedTeam) {
+          if (item.status === "Finalizado") {
+            closePanelMap();
+          } else if (panelMap && panelMapMarker && latClean !== null && lngClean !== null) {
             panelMapMarker.setLatLng([latClean, lngClean]);
             panelMap.panTo([latClean, lngClean]);
           }
         }
+
+        const actionsContent = actions.length > 0 ? actions.join(' ') : '<span style="color:#666; font-size:0.85rem;">-</span>';
 
         return `
           <tr>
@@ -240,7 +247,7 @@
             <td>${formatTime(item.startTime)}</td>
             <td>${formatTime(item.endTime)}</td>
             <td><strong>${formatTime(item.totalTime)}</strong></td>
-            <td>${actions.join(' ')}</td>
+            <td>${actionsContent}</td>
           </tr>
         `;
       }).join('');
