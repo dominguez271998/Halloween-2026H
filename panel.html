@@ -166,6 +166,19 @@
 
   let panelMap = null;
   let panelMapMarker = null;
+  let currentTrackedTeam = null;
+
+  function formatTime(val) {
+    if (!val) return '-';
+    let str = String(val).trim();
+    if (str.includes('T')) {
+      let parts = str.split('T');
+      if (parts.length > 1) {
+        return parts[1].split('.')[0];
+      }
+    }
+    return str;
+  }
 
   function cleanCoordinate(coord, isLat) {
     if (coord === null || coord === undefined || coord === "") return null;
@@ -173,7 +186,6 @@
     let num = parseFloat(str);
     if (isNaN(num)) return null;
 
-    // Si Google Sheets eliminó el punto decimal (ej: 368375 en lugar de 36.8375)
     let maxLimit = isLat ? 90 : 180;
     while (Math.abs(num) > maxLimit) {
       num = num / 10;
@@ -212,14 +224,22 @@
           actions.push(`<button class="btn-action btn-loc-no" onclick="showNoLocation('${escapeHtml(item.team)}')">📍 Sin GPS</button>`);
         }
 
+        // ACTUALIZACIÓN EN TIEMPO REAL DEL MAPA SI ESTÁ ABIERTO
+        if (currentTrackedTeam && item.team === currentTrackedTeam && panelMap && panelMapMarker) {
+          if (latClean !== null && lngClean !== null) {
+            panelMapMarker.setLatLng([latClean, lngClean]);
+            panelMap.panTo([latClean, lngClean]);
+          }
+        }
+
         return `
           <tr>
             <td><strong>${escapeHtml(item.team)}</strong></td>
             <td><span class="badge ${badgeClass}">${item.status}</span></td>
             <td>${escapeHtml(item.station || '-')}</td>
-            <td>${item.startTime || '-'}</td>
-            <td>${item.endTime || '-'}</td>
-            <td><strong>${item.totalTime || '-'}</strong></td>
+            <td>${formatTime(item.startTime)}</td>
+            <td>${formatTime(item.endTime)}</td>
+            <td><strong>${formatTime(item.totalTime)}</strong></td>
             <td>${actions.join(' ')}</td>
           </tr>
         `;
@@ -269,6 +289,7 @@
       return;
     }
 
+    currentTrackedTeam = teamName;
     document.getElementById('panel-map-title').innerText = `📍 Ubicación: ${teamName}`;
     document.getElementById('modal-panel-map').classList.remove('hidden');
 
@@ -286,7 +307,7 @@
       }).addTo(panelMap);
 
       panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
-        .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`)
+        .bindPopup(`<strong>${teamName}</strong><br>Rastreando ubicación en tiempo real...`)
         .openPopup();
 
       panelMap.invalidateSize();
@@ -298,6 +319,7 @@
   }
 
   function closePanelMap() {
+    currentTrackedTeam = null;
     document.getElementById('modal-panel-map').classList.add('hidden');
     if (panelMap) {
       panelMap.remove();
