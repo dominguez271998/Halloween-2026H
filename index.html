@@ -124,6 +124,13 @@
       border-radius: 0 8px 8px 0;
     }
 
+    .progress-bar {
+      color: var(--warning);
+      font-size: 0.9rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
     .status-msg { margin-top: 10px; font-weight: bold; text-align: center; }
     .error { color: #ef4444; font-size: 0.85rem; margin-bottom: 10px; word-break: break-word; }
     .success { color: var(--success); }
@@ -168,14 +175,6 @@
       border: 1px solid #444;
       margin: 12px 0;
     }
-
-    .leaflet-popup-content-wrapper {
-      background: #222;
-      color: #fff;
-      border-radius: 8px;
-      border: 1px solid var(--accent);
-    }
-    .leaflet-popup-tip { background: #222; }
 
     .white-overlay {
       position: fixed;
@@ -229,16 +228,17 @@
     <h2 id="display-team-name" style="color: var(--accent);"></h2>
     
     <div class="route-box">
-      <strong>Tu primera estación asignada:</strong>
-      <p id="assigned-station" style="font-size: 1.2rem; margin-top: 5px; color: #fff;"></p>
+      <div id="progress-indicator" class="progress-bar">Estación 1 de 4</div>
+      <strong>Tu objetivo actual:</strong>
+      <p id="assigned-station" style="font-size: 1.1rem; margin-top: 5px; color: #fff;"></p>
     </div>
 
-    <p style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;">
-      Busca al actor en esa ubicación. Resuelve su enigma o encuéntrale la palabra clave para recibir la moneda.
+    <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;">
+      Busca al actor en esa ubicación. Resuelve su enigma para obtener la palabra clave.
     </p>
 
-    <label for="station-code">Palabra Clave o Código del Actor:</label>
-    <input type="text" id="station-code" placeholder="Introduce el código..." autocomplete="off">
+    <label for="station-code" id="label-code">Palabra Clave de la Estación:</label>
+    <input type="text" id="station-code" placeholder="Introduce la palabra clave..." autocomplete="off">
     
     <button id="btn-validate" class="btn-primary" onclick="validateCode()">Validar Código</button>
     <div id="game-status" class="status-msg"></div>
@@ -254,7 +254,7 @@
     </div>
 
     <p style="font-size: 0.85rem; color: var(--text-muted);">
-      Tus datos han sido registrados automáticamente en la clasificación de la organización.
+      Tus datos han sido registrados automáticamente en la clasificación oficial.
     </p>
   </div>
 </div>
@@ -262,7 +262,7 @@
 <div id="modal-map" class="modal-overlay hidden">
   <div class="modal-content">
     <h3 style="color: var(--accent);">Mapa de Huércal de Almería</h3>
-    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Toca las marcas para ver las pistas. El punto azul es tu posición.</p>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Punto naranja: Tu objetivo actual. Punto azul: Tu ubicación.</p>
     
     <div id="map"></div>
 
@@ -285,30 +285,35 @@
   let statusPollInterval = null;
   let gpsInterval = null;
   let teamNameGlobal = "";
-  let assignedStationGlobal = "";
+
+  let currentStepIndex = 0; // 0, 1, 2, 3 (Estaciones aleatorias) - 4 (Regreso a Base)
+  let teamRouteIndexes = []; // Array con los índices en orden aleatorio único para el equipo
 
   let torchTrack = null;
   let isTorchOn = false;
 
   let leafletMap = null;
-  let isMapInitialized = false;
+  let stationMarker = null;
   let userLocationMarker = null;
   let currentUserLat = null;
   let currentUserLng = null;
 
-  const stations = [
-    "Estación A: Plaza de la Constitución (Actor: El Brujo)",
-    "Estación B: Parque Municipal (Actor: La Llorona)",
-    "Estación C: Iglesia Vieja (Actor: El Monje)"
+  // DEFINICIÓN DE LAS 4 ESTACIONES Y SUS CÓDIGOS DE VALIDACIÓN
+  const allStations = [
+    { id: 0, title: "Estación 1: Plaza Constitución (Actor: El Brujo)", name: "Plaza Constitución", code: "AQUELARRE", lat: 36.8385, lng: -2.4442 },
+    { id: 1, title: "Estación 2: Parque Municipal (Actor: La Llorona)", name: "Parque Municipal", code: "NIGHT2026", lat: 36.8368, lng: -2.4428 },
+    { id: 2, title: "Estación 3: Iglesia Vieja (Actor: El Monje)", name: "Iglesia Vieja", code: "HURCAL", lat: 36.8358, lng: -2.4412 },
+    { id: 3, title: "Estación 4: Centro Cultural (Actor: La Sombra)", name: "Centro Cultural", code: "SANTOS", lat: 36.8345, lng: -2.4400 }
   ];
 
-  const mapPoints = [
-    { id: "A", key: "Estación A", title: "Estación A: Plaza Constitución", desc: "Actor: El Brujo", lat: 36.8385, lng: -2.4442 },
-    { id: "B", key: "Estación B", title: "Estación B: Parque Municipal", desc: "Actor: La Llorona", lat: 36.8368, lng: -2.4428 },
-    { id: "C", key: "Estación C", title: "Estación C: Iglesia Vieja", desc: "Actor: El Monje", lat: 36.8358, lng: -2.4412 }
-  ];
+  // PUNTO DE ORIGEN / MESA DE CONTROL FINAL
+  const baseStation = {
+    title: "🏁 Punto de Inicio: Mesa de Control (Plaza Constitución)",
+    code: "FIN2026", // Código que da el Staff en la mesa para cerrar el juego
+    lat: 36.8385,
+    lng: -2.4442
+  };
 
-  const validCodes = ["AQUELARRE", "NIGHT2026", "HURCAL"];
   const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
 
   window.addEventListener('DOMContentLoaded', () => {
@@ -319,7 +324,8 @@
   function saveSession(state) {
     localStorage.setItem('escape_state', state);
     localStorage.setItem('escape_team', teamNameGlobal);
-    localStorage.setItem('escape_station', assignedStationGlobal);
+    localStorage.setItem('escape_route', JSON.stringify(teamRouteIndexes));
+    localStorage.setItem('escape_step', currentStepIndex);
     if (startTime) localStorage.setItem('escape_startTime', startTime);
   }
 
@@ -328,7 +334,9 @@
     if (!savedState) return;
 
     teamNameGlobal = localStorage.getItem('escape_team') || "";
-    assignedStationGlobal = localStorage.getItem('escape_station') || "";
+    const savedRoute = localStorage.getItem('escape_route');
+    if (savedRoute) teamRouteIndexes = JSON.parse(savedRoute);
+    currentStepIndex = parseInt(localStorage.getItem('escape_step') || "0");
     const savedStartTime = localStorage.getItem('escape_startTime');
 
     if (savedState === 'wait') {
@@ -344,8 +352,8 @@
       document.getElementById('screen-game').classList.remove('hidden');
       document.getElementById('tools-bar').classList.remove('hidden');
       document.getElementById('display-team-name').innerText = teamNameGlobal;
-      document.getElementById('assigned-station').innerText = assignedStationGlobal;
 
+      updateGameUI();
       startTimer();
     } else if (savedState === 'end') {
       document.getElementById('screen-start').classList.add('hidden');
@@ -373,7 +381,7 @@
           currentUserLat = pos.coords.latitude;
           currentUserLng = pos.coords.longitude;
 
-          if (leafletMap && isMapInitialized) {
+          if (leafletMap) {
             updateUserMarker(currentUserLat, currentUserLng);
           }
 
@@ -411,7 +419,7 @@
         fillOpacity: 0.9
       }).addTo(leafletMap);
 
-      userLocationMarker.bindPopup("<b>🔵 Tu ubicación actual</b>").openPopup();
+      userLocationMarker.bindPopup("<b>🔵 Tu ubicación actual</b>");
     } else {
       userLocationMarker.setLatLng([lat, lng]);
     }
@@ -447,11 +455,19 @@
     const btn = document.getElementById('btn-start');
     btn.disabled = true;
 
-    const randomIndex = Math.floor(Math.random() * stations.length);
-    assignedStationGlobal = stations[randomIndex];
+    // GENERAR RUTA COMPLETAMENTE ALEATORIA SIN REPETIR (Fisher-Yates Shuffle)
+    teamRouteIndexes = [0, 1, 2, 3];
+    for (let i = teamRouteIndexes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [teamRouteIndexes[i], teamRouteIndexes[j]] = [teamRouteIndexes[j], teamRouteIndexes[i]];
+    }
+    currentStepIndex = 0;
+
+    const firstStationObj = allStations[teamRouteIndexes[0]];
+    const initialProgressText = `Estación 1/4 (${firstStationObj.name})`;
 
     try {
-      const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&assignedStation=${encodeURIComponent(assignedStationGlobal)}`;
+      const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&assignedStation=${encodeURIComponent(initialProgressText)}`;
       const response = await fetch(requestUrl);
       const textResponse = await response.text();
       let data = JSON.parse(textResponse);
@@ -500,12 +516,42 @@
         document.getElementById('screen-game').classList.remove('hidden');
         document.getElementById('tools-bar').classList.remove('hidden');
         document.getElementById('display-team-name').innerText = teamNameGlobal;
-        document.getElementById('assigned-station').innerText = assignedStationGlobal;
 
+        updateGameUI();
         startTimer();
       }
     } catch (err) {
       console.error("Esperando salida de la organización...", err);
+    }
+  }
+
+  function getCurrentTarget() {
+    if (currentStepIndex < 4) {
+      const stationId = teamRouteIndexes[currentStepIndex];
+      return allStations[stationId];
+    } else {
+      return baseStation; // Regreso obligatorio a base
+    }
+  }
+
+  function updateGameUI() {
+    const target = getCurrentTarget();
+
+    if (currentStepIndex < 4) {
+      document.getElementById('progress-indicator').innerText = `Estación ${currentStepIndex + 1} de 4`;
+      document.getElementById('assigned-station').innerText = target.title;
+      document.getElementById('station-instructions').innerText = "Busca al actor en esa ubicación. Resuelve su enigma para obtener la palabra clave.";
+      document.getElementById('label-code').innerText = "Palabra Clave de la Estación:";
+    } else {
+      document.getElementById('progress-indicator').innerText = "🏁 FASE FINAL";
+      document.getElementById('progress-indicator').style.color = "var(--success)";
+      document.getElementById('assigned-station').innerText = target.title;
+      document.getElementById('station-instructions').innerText = "¡Has completado las 4 estaciones! Regresa de inmediato al Punto de Inicio con la Organización para sellar tu victoria.";
+      document.getElementById('label-code').innerText = "Código Final de la Organización:";
+    }
+
+    if (leafletMap) {
+      renderTargetOnMap();
     }
   }
 
@@ -519,15 +565,40 @@
     }, 1000);
   }
 
-  function validateCode() {
+  async function validateCode() {
     const input = document.getElementById('station-code').value.trim().toUpperCase();
     const status = document.getElementById('game-status');
+    const target = getCurrentTarget();
 
-    if (validCodes.includes(input)) {
+    if (input === target.code) {
       status.className = "status-msg success";
       status.innerText = "¡Código Correcto!";
-      
-      setTimeout(() => { finishGame(); }, 800);
+      document.getElementById('station-code').value = "";
+
+      currentStepIndex++;
+
+      let progressText = "";
+      if (currentStepIndex < 4) {
+        const nextStationObj = allStations[teamRouteIndexes[currentStepIndex]];
+        progressText = `Estación ${currentStepIndex + 1}/4 (${nextStationObj.name})`;
+      } else {
+        progressText = "De regreso a Base";
+      }
+
+      fetch(`${WEB_APP_URL}?action=updateProgress&teamName=${encodeURIComponent(teamNameGlobal)}&progress=${encodeURIComponent(progressText)}`, { mode: 'no-cors' });
+
+      saveSession('game');
+
+      setTimeout(() => {
+        status.innerText = "";
+        if (currentStepIndex <= 4) {
+          updateGameUI();
+        }
+        if (currentStepIndex > 4) {
+          finishGame();
+        }
+      }, 800);
+
     } else {
       status.className = "status-msg error";
       status.innerText = "Código incorrecto. Inténtalo de nuevo.";
@@ -566,23 +637,31 @@
       attribution: 'OpenStreetMap'
     }).addTo(leafletMap);
 
-    // FILTRAR SOLO LA ESTACIÓN ASIGNADA AL PARTICIPANTE
-    mapPoints.forEach(p => {
-      if (assignedStationGlobal && assignedStationGlobal.includes(p.key)) {
-        L.marker([p.lat, p.lng]).addTo(leafletMap)
-          .bindPopup(`<strong>${p.title}</strong><br><span style="color:#ff6b00;">${p.desc}</span>`)
-          .openPopup();
-      }
-    });
+    renderTargetOnMap();
+  }
+
+  function renderTargetOnMap() {
+    if (!leafletMap) return;
+
+    if (stationMarker) {
+      leafletMap.removeLayer(stationMarker);
+    }
+
+    const target = getCurrentTarget();
+
+    stationMarker = L.marker([target.lat, target.lng]).addTo(leafletMap)
+      .bindPopup(`<strong>${target.title}</strong>`)
+      .openPopup();
   }
 
   function toggleMap(show) {
     const modal = document.getElementById('modal-map');
     if (show) {
       modal.classList.remove('hidden');
-      if (!isMapInitialized) {
+      if (!leafletMap) {
         initMap();
-        isMapInitialized = true;
+      } else {
+        renderTargetOnMap();
       }
 
       setTimeout(() => {
@@ -590,7 +669,6 @@
           leafletMap.invalidateSize();
           if (currentUserLat && currentUserLng) {
             updateUserMarker(currentUserLat, currentUserLng);
-            leafletMap.setView([currentUserLat, currentUserLng], 17);
           }
         }
       }, 200);
