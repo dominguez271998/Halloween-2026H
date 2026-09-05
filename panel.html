@@ -167,6 +167,20 @@
   let panelMap = null;
   let panelMapMarker = null;
 
+  function cleanCoordinate(coord, isLat) {
+    if (coord === null || coord === undefined || coord === "") return null;
+    let str = String(coord).trim().replace(',', '.');
+    let num = parseFloat(str);
+    if (isNaN(num)) return null;
+
+    // Si Google Sheets eliminó el punto decimal (ej: 368375 en lugar de 36.8375)
+    let maxLimit = isLat ? 90 : 180;
+    while (Math.abs(num) > maxLimit) {
+      num = num / 10;
+    }
+    return num;
+  }
+
   async function loadDashboard() {
     try {
       const res = await fetch(`${WEB_APP_URL}?action=getData`);
@@ -189,9 +203,11 @@
           actions.push(`<button class="btn-action btn-approve" onclick="approveStart('${escapeHtml(item.team)}')">🟢 Salida</button>`);
         }
 
-        const hasLocation = item.lat !== null && item.lng !== null && item.lat !== "" && item.lng !== "";
-        if (hasLocation) {
-          actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', '${item.lat}', '${item.lng}')">📍 Ubicación</button>`);
+        const latClean = cleanCoordinate(item.lat, true);
+        const lngClean = cleanCoordinate(item.lng, false);
+
+        if (latClean !== null && lngClean !== null) {
+          actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', '${latClean}', '${lngClean}')">📍 Ubicación</button>`);
         } else {
           actions.push(`<button class="btn-action btn-loc-no" onclick="showNoLocation('${escapeHtml(item.team)}')">📍 Sin GPS</button>`);
         }
@@ -245,11 +261,10 @@
   }
 
   function showTeamLocation(teamName, rawLat, rawLng) {
-    // Convertir comas decimales e interpretar como número
-    const lat = parseFloat(String(rawLat).replace(',', '.'));
-    const lng = parseFloat(String(rawLng).replace(',', '.'));
+    const lat = cleanCoordinate(rawLat, true);
+    const lng = cleanCoordinate(rawLng, false);
 
-    if (isNaN(lat) || isNaN(lng)) {
+    if (lat === null || lng === null) {
       alert("Coordenadas no válidas recibidas para este equipo.");
       return;
     }
@@ -257,38 +272,37 @@
     document.getElementById('panel-map-title').innerText = `📍 Ubicación: ${teamName}`;
     document.getElementById('modal-panel-map').classList.remove('hidden');
 
-    // Esperar a que el modal termine de renderizarse en pantalla antes de calcular vistas
     setTimeout(() => {
-      if (!panelMap) {
-        panelMap = L.map('panel-map').setView([lat, lng], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: 'OpenStreetMap'
-        }).addTo(panelMap);
-
-        panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
-          .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`);
-      } else {
-        panelMap.setView([lat, lng], 16);
-        if (panelMapMarker) {
-          panelMapMarker.setLatLng([lat, lng]).setPopupContent(`<strong>${teamName}</strong><br>Posición GPS recibida`);
-        } else {
-          panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
-            .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`);
-        }
+      if (panelMap) {
+        panelMap.remove();
+        panelMap = null;
       }
 
+      panelMap = L.map('panel-map').setView([lat, lng], 17);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: 'OpenStreetMap'
+      }).addTo(panelMap);
+
+      panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
+        .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`)
+        .openPopup();
+
       panelMap.invalidateSize();
-      panelMapMarker.openPopup();
-    }, 200);
+    }, 300);
   }
 
   function showNoLocation(teamName) {
-    alert(`El equipo "${teamName}" aún no ha enviado coordenadas GPS.`);
+    alert(`El equipo "${teamName}" aún no ha enviado coordenadas GPS válidas.`);
   }
 
   function closePanelMap() {
     document.getElementById('modal-panel-map').classList.add('hidden');
+    if (panelMap) {
+      panelMap.remove();
+      panelMap = null;
+    }
   }
 
   function escapeHtml(text) {
