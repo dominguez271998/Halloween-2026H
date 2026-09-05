@@ -343,14 +343,15 @@
       startTimer();
     } else if (savedState === 'end') {
       document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('screen-wait').classList.add('hidden');
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('tools-bar').classList.add('hidden'); // OCULTA HERRAMIENTAS AL FINALIZAR
       document.getElementById('screen-end').classList.remove('hidden');
     }
   }
 
-  // GEOLOCALIZACIÓN GPS CONTINUA E INMEDIATA
   function initGPSWatch() {
     if ("geolocation" in navigator) {
-      // 1. Obtener coordenadas de inmediato
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           currentUserLat = pos.coords.latitude;
@@ -361,7 +362,6 @@
         { enableHighAccuracy: true, timeout: 8000 }
       );
 
-      // 2. Rastreo en tiempo real
       navigator.geolocation.watchPosition(
         (pos) => {
           currentUserLat = pos.coords.latitude;
@@ -379,14 +379,11 @@
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 }
       );
 
-      // 3. Intervalo de respaldo para enviar posición cada 10s
       gpsInterval = setInterval(() => {
         if (teamNameGlobal && currentUserLat && currentUserLng) {
           sendLocationToServer(currentUserLat, currentUserLng);
         }
       }, 10000);
-    } else {
-      alert("Tu dispositivo o navegador no soporta geolocalización GPS.");
     }
   }
 
@@ -495,6 +492,7 @@
 
         document.getElementById('screen-wait').classList.add('hidden');
         document.getElementById('screen-game').classList.remove('hidden');
+        document.getElementById('tools-bar').classList.remove('hidden');
         document.getElementById('display-team-name').innerText = teamNameGlobal;
         document.getElementById('assigned-station').innerText = assignedStationGlobal;
 
@@ -534,6 +532,10 @@
     clearInterval(timerInterval);
     document.getElementById('btn-validate').disabled = true;
 
+    // Apagar linterna y cerrar mapa en caso de estar abiertos al ganar
+    if (isTorchOn) toggleTorch();
+    toggleMap(false);
+
     saveSession('end');
 
     const d = new Date();
@@ -546,6 +548,7 @@
     fetch(`${WEB_APP_URL}?action=finish&teamName=${encodeURIComponent(teamNameGlobal)}&endTime=${encodeURIComponent(endHourFormatted)}&totalTime=${encodeURIComponent(timeFormatted)}`, { mode: 'no-cors' });
 
     document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('tools-bar').classList.add('hidden'); // OCULTA BARRAS DE HERRAMIENTAS
     document.getElementById('screen-end').classList.remove('hidden');
     document.getElementById('final-time').innerText = timeFormatted;
   }
