@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Escape Room Huércal de Almería</title>
-  <!-- Leaflet CSS para el Mapa Interactivo real -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
@@ -55,7 +54,6 @@
       margin-top: 8px;
     }
 
-    /* BARRA DE HERRAMIENTAS (LINTERNA Y MAPA) */
     .tools-bar {
       display: flex;
       gap: 10px;
@@ -142,7 +140,6 @@
 
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* MODAL DEL MAPA REAL */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -172,7 +169,6 @@
       margin: 12px 0;
     }
 
-    /* Estilo popup Leaflet */
     .leaflet-popup-content-wrapper {
       background: #222;
       color: #fff;
@@ -181,7 +177,6 @@
     }
     .leaflet-popup-tip { background: #222; }
 
-    /* MODAL DE PANTALLA BLANCA (LINTERNA DE RESPALDO) */
     .white-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -203,13 +198,11 @@
     <div id="timer-display" class="timer-badge">Tiempo: --:--</div>
   </header>
 
-  <!-- BARRA DE HERRAMIENTAS VISIBLE TRAS EL REGISTRO -->
   <div id="tools-bar" class="tools-bar hidden">
     <button class="btn-tool" id="btn-torch" onclick="toggleTorch()">🔦 Linterna</button>
     <button class="btn-tool" onclick="toggleMap(true)">🗺️ Mapa Real</button>
   </div>
 
-  <!-- PANTALLA 1: REGISTRO -->
   <div id="screen-start" class="card">
     <h2>Registro de Equipo</h2>
     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0 15px 0;">
@@ -221,7 +214,6 @@
     <button id="btn-start" class="btn-primary" onclick="registerTeam()">Registrar Equipo</button>
   </div>
 
-  <!-- PANTALLA 2: ESPERA DE SALIDA -->
   <div id="screen-wait" class="card hidden" style="text-align: center;">
     <h2 style="color: var(--warning);">Equipo Registrado</h2>
     <p id="wait-team-name" style="font-size: 1.3rem; font-weight: bold; margin: 10px 0; color: #fff;"></p>
@@ -233,7 +225,6 @@
     </p>
   </div>
 
-  <!-- PANTALLA 3: JUEGO ACTIVO -->
   <div id="screen-game" class="card hidden">
     <h2 id="display-team-name" style="color: var(--accent);"></h2>
     
@@ -253,7 +244,6 @@
     <div id="game-status" class="status-msg"></div>
   </div>
 
-  <!-- PANTALLA 4: FINALIZADO -->
   <div id="screen-end" class="card hidden" style="text-align: center;">
     <h2 style="color: var(--success);">¡Misión Completada!</h2>
     <p style="margin: 15px 0;">Has sellado la amenaza en Huércal de Almería.</p>
@@ -269,11 +259,10 @@
   </div>
 </div>
 
-<!-- MODAL MAPA REAL -->
 <div id="modal-map" class="modal-overlay hidden">
   <div class="modal-content">
     <h3 style="color: var(--accent);">Mapa de Huércal de Almería</h3>
-    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Haz clic en las marcas para ver las pistas de cada estación</p>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Toca las marcas para ver las pistas. El punto azul es tu posición.</p>
     
     <div id="map"></div>
 
@@ -281,13 +270,11 @@
   </div>
 </div>
 
-<!-- MODAL LINTERNA PANTALLA BLANCA -->
 <div id="modal-white-screen" class="white-overlay hidden" onclick="toggleWhiteOverlay(false)">
   <p style="font-weight: bold; font-size: 1.2rem;">🔦 PANTALLA LINTERNA</p>
   <p style="font-size: 0.85rem; margin-top: 5px;">Haz clic en cualquier lugar para cerrar</p>
 </div>
 
-<!-- Script de Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
@@ -296,6 +283,7 @@
   let startTime = null;
   let timerInterval = null;
   let statusPollInterval = null;
+  let gpsInterval = null;
   let teamNameGlobal = "";
   let assignedStationGlobal = "";
 
@@ -304,6 +292,9 @@
 
   let leafletMap = null;
   let isMapInitialized = false;
+  let userLocationMarker = null;
+  let currentUserLat = null;
+  let currentUserLng = null;
 
   const stations = [
     "Estación A: Plaza de la Constitución (Actor: El Brujo)",
@@ -314,7 +305,10 @@
   const validCodes = ["AQUELARRE", "NIGHT2026", "HURCAL"];
   const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
 
-  window.addEventListener('DOMContentLoaded', restoreSession);
+  window.addEventListener('DOMContentLoaded', () => {
+    restoreSession();
+    initGPSWatch();
+  });
 
   function saveSession(state) {
     localStorage.setItem('escape_state', state);
@@ -350,6 +344,73 @@
     } else if (savedState === 'end') {
       document.getElementById('screen-start').classList.add('hidden');
       document.getElementById('screen-end').classList.remove('hidden');
+    }
+  }
+
+  // GEOLOCALIZACIÓN GPS CONTINUA E INMEDIATA
+  function initGPSWatch() {
+    if ("geolocation" in navigator) {
+      // 1. Obtener coordenadas de inmediato
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          currentUserLat = pos.coords.latitude;
+          currentUserLng = pos.coords.longitude;
+          if (teamNameGlobal) sendLocationToServer(currentUserLat, currentUserLng);
+        },
+        (err) => console.warn("Error GPS inicial:", err),
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+
+      // 2. Rastreo en tiempo real
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          currentUserLat = pos.coords.latitude;
+          currentUserLng = pos.coords.longitude;
+
+          if (leafletMap && isMapInitialized) {
+            updateUserMarker(currentUserLat, currentUserLng);
+          }
+
+          if (teamNameGlobal) {
+            sendLocationToServer(currentUserLat, currentUserLng);
+          }
+        },
+        (err) => console.warn("Error rastreo GPS:", err),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 }
+      );
+
+      // 3. Intervalo de respaldo para enviar posición cada 10s
+      gpsInterval = setInterval(() => {
+        if (teamNameGlobal && currentUserLat && currentUserLng) {
+          sendLocationToServer(currentUserLat, currentUserLng);
+        }
+      }, 10000);
+    } else {
+      alert("Tu dispositivo o navegador no soporta geolocalización GPS.");
+    }
+  }
+
+  function sendLocationToServer(lat, lng) {
+    if (!lat || !lng || !teamNameGlobal) return;
+    fetch(`${WEB_APP_URL}?action=updateLocation&teamName=${encodeURIComponent(teamNameGlobal)}&lat=${lat}&lng=${lng}`, { mode: 'no-cors' })
+      .catch(e => console.error("Error enviando ubicación:", e));
+  }
+
+  function updateUserMarker(lat, lng) {
+    if (!leafletMap) return;
+    if (!userLocationMarker) {
+      userLocationMarker = L.circleMarker([lat, lng], {
+        radius: 10,
+        fillColor: "#3b82f6",
+        color: "#ffffff",
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.9
+      }).addTo(leafletMap);
+
+      userLocationMarker.bindPopup("<b>🔵 Tu ubicación actual</b>").openPopup();
+    } else {
+      userLocationMarker.setLatLng([lat, lng]);
     }
   }
 
@@ -401,6 +462,10 @@
 
       if (data.status === "OK") {
         saveSession('wait');
+
+        if (currentUserLat && currentUserLng) {
+          sendLocationToServer(currentUserLat, currentUserLng);
+        }
 
         document.getElementById('screen-start').classList.add('hidden');
         document.getElementById('screen-wait').classList.remove('hidden');
@@ -485,17 +550,14 @@
     document.getElementById('final-time').innerText = timeFormatted;
   }
 
-  // INICIALIZACIÓN DEL MAPA REAL (Leaflet + OpenStreetMap)
   function initMap() {
-    // Coordenadas centradas en Huércal de Almería
     leafletMap = L.map('map').setView([36.8375, -2.4435], 16);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+      attribution: 'OpenStreetMap'
     }).addTo(leafletMap);
 
-    // Puntos marcados de las estaciones en Huércal
     const mapPoints = [
       { lat: 36.8385, lng: -2.4442, title: "Estación A: Plaza Constitución", desc: "Actor: El Brujo" },
       { lat: 36.8368, lng: -2.4428, title: "Estación B: Parque Municipal", desc: "Actor: La Llorona" },
@@ -515,9 +577,17 @@
       if (!isMapInitialized) {
         initMap();
         isMapInitialized = true;
-      } else if (leafletMap) {
-        setTimeout(() => { leafletMap.invalidateSize(); }, 200);
       }
+
+      setTimeout(() => {
+        if (leafletMap) {
+          leafletMap.invalidateSize();
+          if (currentUserLat && currentUserLng) {
+            updateUserMarker(currentUserLat, currentUserLng);
+            leafletMap.setView([currentUserLat, currentUserLng], 17);
+          }
+        }
+      }, 200);
     } else {
       modal.classList.add('hidden');
     }
