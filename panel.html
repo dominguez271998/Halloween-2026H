@@ -189,9 +189,9 @@
           actions.push(`<button class="btn-action btn-approve" onclick="approveStart('${escapeHtml(item.team)}')">🟢 Salida</button>`);
         }
 
-        const hasLocation = item.lat && item.lng;
+        const hasLocation = item.lat !== null && item.lng !== null && item.lat !== "" && item.lng !== "";
         if (hasLocation) {
-          actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', ${item.lat}, ${item.lng})">📍 Ubicación</button>`);
+          actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', '${item.lat}', '${item.lng}')">📍 Ubicación</button>`);
         } else {
           actions.push(`<button class="btn-action btn-loc-no" onclick="showNoLocation('${escapeHtml(item.team)}')">📍 Sin GPS</button>`);
         }
@@ -244,34 +244,47 @@
     }
   }
 
-  function showTeamLocation(teamName, lat, lng) {
+  function showTeamLocation(teamName, rawLat, rawLng) {
+    // Convertir comas decimales e interpretar como número
+    const lat = parseFloat(String(rawLat).replace(',', '.'));
+    const lng = parseFloat(String(rawLng).replace(',', '.'));
+
+    if (isNaN(lat) || isNaN(lng)) {
+      alert("Coordenadas no válidas recibidas para este equipo.");
+      return;
+    }
+
     document.getElementById('panel-map-title').innerText = `📍 Ubicación: ${teamName}`;
     document.getElementById('modal-panel-map').classList.remove('hidden');
 
-    if (!panelMap) {
-      panelMap = L.map('panel-map').setView([lat, lng], 17);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: 'OpenStreetMap'
-      }).addTo(panelMap);
+    // Esperar a que el modal termine de renderizarse en pantalla antes de calcular vistas
+    setTimeout(() => {
+      if (!panelMap) {
+        panelMap = L.map('panel-map').setView([lat, lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: 'OpenStreetMap'
+        }).addTo(panelMap);
 
-      panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
-        .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`).openPopup();
-    } else {
-      panelMap.setView([lat, lng], 17);
-      if (panelMapMarker) {
-        panelMapMarker.setLatLng([lat, lng]).setPopupContent(`<strong>${teamName}</strong><br>Posición GPS recibida`).openPopup();
-      } else {
         panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
-          .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`).openPopup();
+          .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`);
+      } else {
+        panelMap.setView([lat, lng], 16);
+        if (panelMapMarker) {
+          panelMapMarker.setLatLng([lat, lng]).setPopupContent(`<strong>${teamName}</strong><br>Posición GPS recibida`);
+        } else {
+          panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
+            .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`);
+        }
       }
-    }
 
-    setTimeout(() => { if (panelMap) panelMap.invalidateSize(); }, 200);
+      panelMap.invalidateSize();
+      panelMapMarker.openPopup();
+    }, 200);
   }
 
   function showNoLocation(teamName) {
-    alert(`El equipo "${teamName}" aún no ha enviado coordenadas GPS. Asegúrate de que han aceptado el permiso de ubicación en su navegador móvil.`);
+    alert(`El equipo "${teamName}" aún no ha enviado coordenadas GPS.`);
   }
 
   function closePanelMap() {
