@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clasificación En Directo - La Sombra de Huércal</title>
+  <style>
+    :root {
+      --bg: #0a0a0c;
+      --card: #141419;
+      --accent: #ff6b00;
+      --gold: #ffd700;
+      --silver: #c0c0c0;
+      --bronze: #cd7f32;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: var(--bg); color: #fff; padding: 20px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 700px; }
+    header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid var(--accent); padding-bottom: 15px; }
+    h1 { color: var(--accent); font-size: 2rem; text-transform: uppercase; letter-spacing: 2px; }
+    .subtitle { color: #888; font-size: 0.9rem; margin-top: 5px; }
+    
+    .leaderboard { display: flex; flex-direction: column; gap: 10px; }
+    .row {
+      background: var(--card);
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.3s ease;
+    }
+    .rank { font-size: 1.4rem; font-weight: bold; width: 40px; color: #666; }
+    .rank-1 { color: var(--gold); }
+    .rank-2 { color: var(--silver); }
+    .rank-3 { color: var(--bronze); }
+    .team-info { flex-grow: 1; margin-left: 10px; }
+    .team-name { font-size: 1.1rem; font-weight: bold; }
+    .team-time { font-size: 1.3rem; font-weight: bold; color: var(--accent); }
+    .empty-msg { text-align: center; color: #666; padding: 40px 0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>La Sombra de Huércal</h1>
+    <p class="subtitle">Ranking Oficial de Equipos en Tiempo Real</p>
+  </header>
+
+  <div id="leaderboard" class="leaderboard">
+    <div class="empty-msg">Cargando clasificación...</div>
+  </div>
+</div>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
+
+  async function fetchLeaderboard() {
+    try {
+      const res = await fetch(`${WEB_APP_URL}?action=getData`);
+      const data = await res.json();
+
+      const finished = data.filter(item => item.status === "Finalizado" && item.totalTime);
+
+      finished.sort((a, b) => {
+        return parseTimeToSeconds(a.totalTime) - parseTimeToSeconds(b.totalTime);
+      });
+
+      const container = document.getElementById('leaderboard');
+      
+      if (finished.length === 0) {
+        container.innerHTML = `<div class="empty-msg">Ningún equipo ha completado la misión aún.</div>`;
+        return;
+      }
+
+      container.innerHTML = finished.map((item, index) => {
+        const rank = index + 1;
+        let rankClass = "rank";
+        if (rank === 1) rankClass += " rank-1";
+        if (rank === 2) rankClass += " rank-2";
+        if (rank === 3) rankClass += " rank-3";
+
+        return `
+          <div class="row">
+            <div class="${rankClass}">#${rank}</div>
+            <div class="team-info">
+              <div class="team-name">${escapeHtml(item.team)}</div>
+            </div>
+            <div class="team-time">${item.totalTime}</div>
+          </div>
+        `;
+      }).join('');
+
+    } catch (err) {
+      console.error("Error al obtener la clasificación:", err);
+    }
+  }
+
+  function parseTimeToSeconds(timeStr) {
+    if (!timeStr) return 999999;
+    const parts = timeStr.match(/(\d+)m\s*(\d+)s/);
+    if (!parts) return 999999;
+    return parseInt(parts[1]) * 60 + parseInt(parts[2]);
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+  }
+
+  fetchLeaderboard();
+  setInterval(fetchLeaderboard, 10000);
+</script>
+
+</body>
+</html>

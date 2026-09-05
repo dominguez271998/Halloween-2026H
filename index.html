@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escape Room Huércal de Almería</title>
+  <!-- Leaflet CSS para el Mapa Interactivo real -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg-color: #0d0d0d;
+      --card-bg: #1a1a1a;
+      --accent: #ff6b00;
+      --text: #f0f0f0;
+      --text-muted: #aaa;
+      --success: #22c55e;
+      --warning: #eab308;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 15px;
+      min-height: 100vh;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 450px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    header {
+      text-align: center;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 10px;
+    }
+
+    h1 { color: var(--accent); font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1px; }
+
+    .timer-badge {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #fff;
+      background: #333;
+      padding: 6px 12px;
+      border-radius: 20px;
+      display: inline-block;
+      margin-top: 8px;
+    }
+
+    /* BARRA DE HERRAMIENTAS (LINTERNA Y MAPA) */
+    .tools-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+
+    .btn-tool {
+      flex: 1;
+      padding: 12px;
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-tool:active { opacity: 0.8; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+
+    .hidden { display: none !important; }
+
+    label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-muted); }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #222;
+      color: #fff;
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+
+    button.btn-primary {
+      width: 100%;
+      padding: 15px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1.1rem;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .route-box {
+      background: #262626;
+      border-left: 4px solid var(--accent);
+      padding: 10px 15px;
+      margin: 15px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .status-msg { margin-top: 10px; font-weight: bold; text-align: center; }
+    .error { color: #ef4444; font-size: 0.85rem; margin-bottom: 10px; word-break: break-word; }
+    .success { color: var(--success); }
+
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border-left-color: var(--warning);
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* MODAL DEL MAPA REAL */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.92);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #1a1a1a;
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 420px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    #map {
+      width: 100%;
+      height: 320px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      margin: 12px 0;
+    }
+
+    /* Estilo popup Leaflet */
+    .leaflet-popup-content-wrapper {
+      background: #222;
+      color: #fff;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+    }
+    .leaflet-popup-tip { background: #222; }
+
+    /* MODAL DE PANTALLA BLANCA (LINTERNA DE RESPALDO) */
+    .white-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #ffffff;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <header>
+    <h1>La Sombra de Huércal</h1>
+    <div id="timer-display" class="timer-badge">Tiempo: --:--</div>
+  </header>
+
+  <!-- BARRA DE HERRAMIENTAS VISIBLE TRAS EL REGISTRO -->
+  <div id="tools-bar" class="tools-bar hidden">
+    <button class="btn-tool" id="btn-torch" onclick="toggleTorch()">🔦 Linterna</button>
+    <button class="btn-tool" onclick="toggleMap(true)">🗺️ Mapa Real</button>
+  </div>
+
+  <!-- PANTALLA 1: REGISTRO -->
+  <div id="screen-start" class="card">
+    <h2>Registro de Equipo</h2>
+    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0 15px 0;">
+      Elige un nombre para tu equipo (letras y números, de 3 a 30 caracteres).
+    </p>
+    <label for="team-name">Nombre del Equipo:</label>
+    <input type="text" id="team-name" placeholder="Ej: Los Cazafantasmas" maxlength="30" autocomplete="off">
+    <div id="register-error" class="error hidden"></div>
+    <button id="btn-start" class="btn-primary" onclick="registerTeam()">Registrar Equipo</button>
+  </div>
+
+  <!-- PANTALLA 2: ESPERA DE SALIDA -->
+  <div id="screen-wait" class="card hidden" style="text-align: center;">
+    <h2 style="color: var(--warning);">Equipo Registrado</h2>
+    <p id="wait-team-name" style="font-size: 1.3rem; font-weight: bold; margin: 10px 0; color: #fff;"></p>
+    
+    <div class="spinner"></div>
+
+    <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4;">
+      Acercaos a la mesa de control de la organización para recibir la salida oficial.
+    </p>
+  </div>
+
+  <!-- PANTALLA 3: JUEGO ACTIVO -->
+  <div id="screen-game" class="card hidden">
+    <h2 id="display-team-name" style="color: var(--accent);"></h2>
+    
+    <div class="route-box">
+      <strong>Tu primera estación asignada:</strong>
+      <p id="assigned-station" style="font-size: 1.2rem; margin-top: 5px; color: #fff;"></p>
+    </div>
+
+    <p style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;">
+      Busca al actor en esa ubicación. Resuelve su enigma o encuéntrale la palabra clave para recibir la moneda.
+    </p>
+
+    <label for="station-code">Palabra Clave o Código del Actor:</label>
+    <input type="text" id="station-code" placeholder="Introduce el código..." autocomplete="off">
+    
+    <button id="btn-validate" class="btn-primary" onclick="validateCode()">Validar Código</button>
+    <div id="game-status" class="status-msg"></div>
+  </div>
+
+  <!-- PANTALLA 4: FINALIZADO -->
+  <div id="screen-end" class="card hidden" style="text-align: center;">
+    <h2 style="color: var(--success);">¡Misión Completada!</h2>
+    <p style="margin: 15px 0;">Has sellado la amenaza en Huércal de Almería.</p>
+    
+    <div style="background: #222; padding: 15px; border-radius: 8px; margin: 15px 0;">
+      <p style="color: var(--text-muted);">Tiempo total registrado:</p>
+      <p id="final-time" style="font-size: 2rem; font-weight: bold; color: var(--accent);"></p>
+    </div>
+
+    <p style="font-size: 0.85rem; color: var(--text-muted);">
+      Tus datos han sido registrados automáticamente en la clasificación de la organización.
+    </p>
+  </div>
+</div>
+
+<!-- MODAL MAPA REAL -->
+<div id="modal-map" class="modal-overlay hidden">
+  <div class="modal-content">
+    <h3 style="color: var(--accent);">Mapa de Huércal de Almería</h3>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Haz clic en las marcas para ver las pistas de cada estación</p>
+    
+    <div id="map"></div>
+
+    <button class="btn-primary" onclick="toggleMap(false)">Cerrar Mapa</button>
+  </div>
+</div>
+
+<!-- MODAL LINTERNA PANTALLA BLANCA -->
+<div id="modal-white-screen" class="white-overlay hidden" onclick="toggleWhiteOverlay(false)">
+  <p style="font-weight: bold; font-size: 1.2rem;">🔦 PANTALLA LINTERNA</p>
+  <p style="font-size: 0.85rem; margin-top: 5px;">Haz clic en cualquier lugar para cerrar</p>
+</div>
+
+<!-- Script de Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
+
+  let startTime = null;
+  let timerInterval = null;
+  let statusPollInterval = null;
+  let teamNameGlobal = "";
+  let assignedStationGlobal = "";
+
+  let torchTrack = null;
+  let isTorchOn = false;
+
+  let leafletMap = null;
+  let isMapInitialized = false;
+
+  const stations = [
+    "Estación A: Plaza de la Constitución (Actor: El Brujo)",
+    "Estación B: Parque Municipal (Actor: La Llorona)",
+    "Estación C: Iglesia Vieja (Actor: El Monje)"
+  ];
+
+  const validCodes = ["AQUELARRE", "NIGHT2026", "HURCAL"];
+  const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
+
+  window.addEventListener('DOMContentLoaded', restoreSession);
+
+  function saveSession(state) {
+    localStorage.setItem('escape_state', state);
+    localStorage.setItem('escape_team', teamNameGlobal);
+    localStorage.setItem('escape_station', assignedStationGlobal);
+    if (startTime) localStorage.setItem('escape_startTime', startTime);
+  }
+
+  function restoreSession() {
+    const savedState = localStorage.getItem('escape_state');
+    if (!savedState) return;
+
+    teamNameGlobal = localStorage.getItem('escape_team') || "";
+    assignedStationGlobal = localStorage.getItem('escape_station') || "";
+    const savedStartTime = localStorage.getItem('escape_startTime');
+
+    if (savedState === 'wait') {
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('screen-wait').classList.remove('hidden');
+      document.getElementById('tools-bar').classList.remove('hidden');
+      document.getElementById('wait-team-name').innerText = teamNameGlobal;
+
+      statusPollInterval = setInterval(checkStartApproval, 3000);
+    } else if (savedState === 'game') {
+      startTime = parseInt(savedStartTime) || Date.now();
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('screen-game').classList.remove('hidden');
+      document.getElementById('tools-bar').classList.remove('hidden');
+      document.getElementById('display-team-name').innerText = teamNameGlobal;
+      document.getElementById('assigned-station').innerText = assignedStationGlobal;
+
+      startTimer();
+    } else if (savedState === 'end') {
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('screen-end').classList.remove('hidden');
+    }
+  }
+
+  function validateInputName(name) {
+    const regex = /^[a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ\s]{3,30}$/;
+    if (!regex.test(name)) {
+      return "El nombre debe contener entre 3 y 30 caracteres (solo letras y números, sin símbolos).";
+    }
+    const lower = name.toLowerCase();
+    for (let word of badWords) {
+      if (lower.includes(word)) {
+        return "Ese nombre contiene palabras no permitidas. Por favor, elige otro.";
+      }
+    }
+    return null;
+  }
+
+  async function registerTeam() {
+    const teamInput = document.getElementById('team-name').value.trim();
+    const errorDiv = document.getElementById('register-error');
+    errorDiv.classList.add('hidden');
+
+    const validationError = validateInputName(teamInput);
+    if (validationError) {
+      errorDiv.innerText = validationError;
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+
+    teamNameGlobal = teamInput;
+    const btn = document.getElementById('btn-start');
+    btn.disabled = true;
+
+    const randomIndex = Math.floor(Math.random() * stations.length);
+    assignedStationGlobal = stations[randomIndex];
+
+    try {
+      const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&assignedStation=${encodeURIComponent(assignedStationGlobal)}`;
+      const response = await fetch(requestUrl);
+      const textResponse = await response.text();
+      let data = JSON.parse(textResponse);
+
+      if (data.status === "DUPLICATE") {
+        errorDiv.innerText = "¡Ese nombre de equipo ya existe! Elige uno diferente.";
+        errorDiv.classList.remove('hidden');
+        btn.disabled = false;
+        return;
+      }
+
+      if (data.status === "OK") {
+        saveSession('wait');
+
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-wait').classList.remove('hidden');
+        document.getElementById('tools-bar').classList.remove('hidden');
+        document.getElementById('wait-team-name').innerText = teamNameGlobal;
+
+        statusPollInterval = setInterval(checkStartApproval, 3000);
+      }
+
+    } catch (err) {
+      errorDiv.innerText = "Error de conexión con el servidor. Inténtalo de nuevo.";
+      errorDiv.classList.remove('hidden');
+      btn.disabled = false;
+    }
+  }
+
+  async function checkStartApproval() {
+    try {
+      const response = await fetch(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`);
+      const data = await response.json();
+
+      if (data.status === "En curso") {
+        clearInterval(statusPollInterval);
+        
+        startTime = Date.now();
+        saveSession('game');
+
+        document.getElementById('screen-wait').classList.add('hidden');
+        document.getElementById('screen-game').classList.remove('hidden');
+        document.getElementById('display-team-name').innerText = teamNameGlobal;
+        document.getElementById('assigned-station').innerText = assignedStationGlobal;
+
+        startTimer();
+      }
+    } catch (err) {
+      console.error("Esperando salida de la organización...", err);
+    }
+  }
+
+  function startTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const seconds = String(elapsed % 60).padStart(2, '0');
+      document.getElementById('timer-display').innerText = `Tiempo: ${minutes}:${seconds}`;
+    }, 1000);
+  }
+
+  function validateCode() {
+    const input = document.getElementById('station-code').value.trim().toUpperCase();
+    const status = document.getElementById('game-status');
+
+    if (validCodes.includes(input)) {
+      status.className = "status-msg success";
+      status.innerText = "¡Código Correcto!";
+      
+      setTimeout(() => { finishGame(); }, 800);
+    } else {
+      status.className = "status-msg error";
+      status.innerText = "Código incorrecto. Inténtalo de nuevo.";
+    }
+  }
+
+  function finishGame() {
+    clearInterval(timerInterval);
+    document.getElementById('btn-validate').disabled = true;
+
+    saveSession('end');
+
+    const d = new Date();
+    const endHourFormatted = d.toLocaleTimeString('es-ES', { hour12: false });
+    const totalSeconds = Math.floor((Date.now() - startTime) / 1000);
+    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    const timeFormatted = `${minutes}m ${seconds}s`;
+
+    fetch(`${WEB_APP_URL}?action=finish&teamName=${encodeURIComponent(teamNameGlobal)}&endTime=${encodeURIComponent(endHourFormatted)}&totalTime=${encodeURIComponent(timeFormatted)}`, { mode: 'no-cors' });
+
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-end').classList.remove('hidden');
+    document.getElementById('final-time').innerText = timeFormatted;
+  }
+
+  // INICIALIZACIÓN DEL MAPA REAL (Leaflet + OpenStreetMap)
+  function initMap() {
+    // Coordenadas centradas en Huércal de Almería
+    leafletMap = L.map('map').setView([36.8375, -2.4435], 16);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+    }).addTo(leafletMap);
+
+    // Puntos marcados de las estaciones en Huércal
+    const mapPoints = [
+      { lat: 36.8385, lng: -2.4442, title: "Estación A: Plaza Constitución", desc: "Actor: El Brujo" },
+      { lat: 36.8368, lng: -2.4428, title: "Estación B: Parque Municipal", desc: "Actor: La Llorona" },
+      { lat: 36.8358, lng: -2.4412, title: "Estación C: Iglesia Vieja", desc: "Actor: El Monje" }
+    ];
+
+    mapPoints.forEach(p => {
+      L.marker([p.lat, p.lng]).addTo(leafletMap)
+        .bindPopup(`<strong>${p.title}</strong><br><span style="color:#ff6b00;">${p.desc}</span>`);
+    });
+  }
+
+  function toggleMap(show) {
+    const modal = document.getElementById('modal-map');
+    if (show) {
+      modal.classList.remove('hidden');
+      if (!isMapInitialized) {
+        initMap();
+        isMapInitialized = true;
+      } else if (leafletMap) {
+        setTimeout(() => { leafletMap.invalidateSize(); }, 200);
+      }
+    } else {
+      modal.classList.add('hidden');
+    }
+  }
+
+  async function toggleTorch() {
+    const btn = document.getElementById('btn-torch');
+
+    if (!isTorchOn) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        torchTrack = stream.getVideoTracks()[0];
+        const capabilities = torchTrack.getCapabilities ? torchTrack.getCapabilities() : {};
+
+        if (capabilities.torch) {
+          await torchTrack.applyConstraints({ advanced: [{ torch: true }] });
+          isTorchOn = true;
+          btn.innerText = "🔦 Apagar Linterna";
+          btn.style.background = "#eab308";
+          btn.style.color = "#000";
+        } else {
+          toggleWhiteOverlay(true);
+        }
+      } catch (e) {
+        toggleWhiteOverlay(true);
+      }
+    } else {
+      if (torchTrack) {
+        torchTrack.stop();
+        torchTrack = null;
+      }
+      toggleWhiteOverlay(false);
+      isTorchOn = false;
+      btn.innerText = "🔦 Linterna";
+      btn.style.background = "#2a2a2a";
+      btn.style.color = "#fff";
+    }
+  }
+
+  function toggleWhiteOverlay(show) {
+    const overlay = document.getElementById('modal-white-screen');
+    if (show) {
+      overlay.classList.remove('hidden');
+    } else {
+      overlay.classList.add('hidden');
+    }
+  }
+</script>
+
+</body>
+</html>

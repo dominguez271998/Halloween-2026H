@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Control - Organización</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --accent: #ff6b00;
+      --text: #e0e0e0;
+      --success: #22c55e;
+      --warning: #eab308;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    h1 { color: var(--accent); font-size: 1.5rem; }
+
+    .btn-approve-all {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 10px 18px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
+      transition: transform 0.1s ease;
+    }
+    .btn-approve-all:hover { opacity: 0.9; }
+    .btn-approve-all:active { transform: scale(0.97); }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
+    
+    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #333; }
+    th { background: #252525; color: #aaa; font-size: 0.85rem; text-transform: uppercase; }
+    
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+    .badge-pending { background: rgba(234, 179, 8, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+    .badge-active { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #60a5fa; }
+    .badge-done { background: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid var(--success); }
+
+    .btn-approve {
+      background: var(--success);
+      color: #000;
+      border: none;
+      padding: 6px 12px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+    }
+    .btn-approve:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Centro de Control - Escape Room</h1>
+      <div id="last-update" style="color: #888; font-size: 0.85rem; margin-top: 4px;">Actualizando...</div>
+    </div>
+    
+    <button class="btn-approve-all" onclick="approveAllTeams()">🚀 Dar Salida a Todos</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div>Equipos Totales</div>
+      <div id="stat-total" class="stat-value">0</div>
+    </div>
+    <div class="stat-card">
+      <div>Pendientes Salida</div>
+      <div id="stat-pending" class="stat-value" style="color: var(--warning);">0</div>
+    </div>
+    <div class="stat-card">
+      <div>En Juego</div>
+      <div id="stat-active" class="stat-value" style="color: #60a5fa;">0</div>
+    </div>
+    <div class="stat-card">
+      <div>Finalizados</div>
+      <div id="stat-done" class="stat-value" style="color: var(--success);">0</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Equipo</th>
+        <th>Estado</th>
+        <th>Estación Inicial</th>
+        <th>Hora Salida</th>
+        <th>Hora Llegada</th>
+        <th>Tiempo Total</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <tr><td colspan="7" style="text-align:center;">Cargando datos del servidor...</td></tr>
+    </tbody>
+  </table>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
+
+  async function loadDashboard() {
+    try {
+      const res = await fetch(`${WEB_APP_URL}?action=getData`);
+      const data = await res.json();
+
+      let pendingCount = 0;
+      let activeCount = 0;
+      let doneCount = 0;
+
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = data.slice().reverse().map(item => {
+        let badgeClass = "badge-pending";
+        if (item.status === "En curso") { badgeClass = "badge-active"; activeCount++; }
+        else if (item.status === "Finalizado") { badgeClass = "badge-done"; doneCount++; }
+        else { pendingCount++; }
+
+        const actionBtn = (item.status === "Pendiente") 
+          ? `<button class="btn-approve" onclick="approveStart('${escapeHtml(item.team)}')">🟢 Dar Salida</button>` 
+          : `-`;
+
+        return `
+          <tr>
+            <td><strong>${escapeHtml(item.team)}</strong></td>
+            <td><span class="badge ${badgeClass}">${item.status}</span></td>
+            <td>${escapeHtml(item.station || '-')}</td>
+            <td>${item.startTime || '-'}</td>
+            <td>${item.endTime || '-'}</td>
+            <td><strong>${item.totalTime || '-'}</strong></td>
+            <td>${actionBtn}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('stat-total').innerText = data.length;
+      document.getElementById('stat-pending').innerText = pendingCount;
+      document.getElementById('stat-active').innerText = activeCount;
+      document.getElementById('stat-done').innerText = doneCount;
+      document.getElementById('last-update').innerText = "Última actualización: " + new Date().toLocaleTimeString();
+
+    } catch (err) {
+      console.error("Error al actualizar panel:", err);
+    }
+  }
+
+  async function approveStart(teamName) {
+    try {
+      await fetch(`${WEB_APP_URL}?action=approve&teamName=${encodeURIComponent(teamName)}`);
+      loadDashboard();
+    } catch (err) {
+      alert("Error al dar salida al equipo.");
+    }
+  }
+
+  async function approveAllTeams() {
+    if (!confirm("¿Estás seguro de que deseas dar la salida a TODOS los equipos pendientes a la vez?")) return;
+
+    try {
+      const res = await fetch(`${WEB_APP_URL}?action=approveAll`);
+      const data = await res.json();
+      if (data.status === "OK") {
+        alert(`¡Salida dada a ${data.count} equipo(s) correctamente!`);
+        loadDashboard();
+      } else {
+        alert("Ocurrió un problema al procesar la salida general.");
+      }
+    } catch (err) {
+      alert("Error de conexión al dar la salida masiva.");
+    }
+  }
+
+  function escapeHtml(text) {
+    return text ? text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])) : '';
+  }
+
+  loadDashboard();
+  setInterval(loadDashboard, 4000);
+</script>
+
+</body>
+</html>
