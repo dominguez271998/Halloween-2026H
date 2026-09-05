@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel de Control - Organización</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
       --bg: #121212;
@@ -55,18 +56,50 @@
     .badge-active { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #60a5fa; }
     .badge-done { background: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid var(--success); }
 
-    .btn-approve {
-      background: var(--success);
-      color: #000;
+    .btn-action {
       border: none;
-      padding: 6px 12px;
+      padding: 6px 10px;
       font-weight: bold;
       border-radius: 6px;
       cursor: pointer;
-      text-transform: uppercase;
       font-size: 0.8rem;
+      margin-right: 5px;
     }
-    .btn-approve:hover { opacity: 0.8; }
+
+    .btn-approve { background: var(--success); color: #000; }
+    .btn-loc { background: #3b82f6; color: #fff; }
+    .btn-loc-no { background: #4b5563; color: #d1d5db; }
+
+    .hidden { display: none !important; }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: #1e1e1e;
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 550px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    #panel-map {
+      width: 100%;
+      height: 380px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      margin: 15px 0;
+    }
   </style>
 </head>
 <body>
@@ -108,7 +141,7 @@
         <th>Hora Salida</th>
         <th>Hora Llegada</th>
         <th>Tiempo Total</th>
-        <th>Acción</th>
+        <th>Acciones</th>
       </tr>
     </thead>
     <tbody id="table-body">
@@ -116,8 +149,23 @@
     </tbody>
   </table>
 
+  <div id="modal-panel-map" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h3 id="panel-map-title" style="color: var(--accent);">Ubicación del Equipo</h3>
+      
+      <div id="panel-map"></div>
+
+      <button class="btn-approve-all" style="width: 100%;" onclick="closePanelMap()">Cerrar Mapa</button>
+    </div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
+
+  let panelMap = null;
+  let panelMapMarker = null;
 
   async function loadDashboard() {
     try {
@@ -135,9 +183,18 @@
         else if (item.status === "Finalizado") { badgeClass = "badge-done"; doneCount++; }
         else { pendingCount++; }
 
-        const actionBtn = (item.status === "Pendiente") 
-          ? `<button class="btn-approve" onclick="approveStart('${escapeHtml(item.team)}')">🟢 Dar Salida</button>` 
-          : `-`;
+        let actions = [];
+
+        if (item.status === "Pendiente") {
+          actions.push(`<button class="btn-action btn-approve" onclick="approveStart('${escapeHtml(item.team)}')">🟢 Salida</button>`);
+        }
+
+        const hasLocation = item.lat && item.lng;
+        if (hasLocation) {
+          actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', ${item.lat}, ${item.lng})">📍 Ubicación</button>`);
+        } else {
+          actions.push(`<button class="btn-action btn-loc-no" onclick="showNoLocation('${escapeHtml(item.team)}')">📍 Sin GPS</button>`);
+        }
 
         return `
           <tr>
@@ -147,7 +204,7 @@
             <td>${item.startTime || '-'}</td>
             <td>${item.endTime || '-'}</td>
             <td><strong>${item.totalTime || '-'}</strong></td>
-            <td>${actionBtn}</td>
+            <td>${actions.join(' ')}</td>
           </tr>
         `;
       }).join('');
@@ -181,12 +238,44 @@
       if (data.status === "OK") {
         alert(`¡Salida dada a ${data.count} equipo(s) correctamente!`);
         loadDashboard();
-      } else {
-        alert("Ocurrió un problema al procesar la salida general.");
       }
     } catch (err) {
       alert("Error de conexión al dar la salida masiva.");
     }
+  }
+
+  function showTeamLocation(teamName, lat, lng) {
+    document.getElementById('panel-map-title').innerText = `📍 Ubicación: ${teamName}`;
+    document.getElementById('modal-panel-map').classList.remove('hidden');
+
+    if (!panelMap) {
+      panelMap = L.map('panel-map').setView([lat, lng], 17);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: 'OpenStreetMap'
+      }).addTo(panelMap);
+
+      panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
+        .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`).openPopup();
+    } else {
+      panelMap.setView([lat, lng], 17);
+      if (panelMapMarker) {
+        panelMapMarker.setLatLng([lat, lng]).setPopupContent(`<strong>${teamName}</strong><br>Posición GPS recibida`).openPopup();
+      } else {
+        panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
+          .bindPopup(`<strong>${teamName}</strong><br>Posición GPS recibida`).openPopup();
+      }
+    }
+
+    setTimeout(() => { if (panelMap) panelMap.invalidateSize(); }, 200);
+  }
+
+  function showNoLocation(teamName) {
+    alert(`El equipo "${teamName}" aún no ha enviado coordenadas GPS. Asegúrate de que han aceptado el permiso de ubicación en su navegador móvil.`);
+  }
+
+  function closePanelMap() {
+    document.getElementById('modal-panel-map').classList.add('hidden');
   }
 
   function escapeHtml(text) {
