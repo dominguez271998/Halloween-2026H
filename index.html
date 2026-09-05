@@ -56,24 +56,24 @@
 
     .tools-bar {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       margin-bottom: 5px;
     }
 
     .btn-tool {
       flex: 1;
-      padding: 12px;
+      padding: 10px 5px;
       background: #2a2a2a;
       color: #fff;
       border: 1px solid #444;
       border-radius: 8px;
       font-weight: bold;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 5px;
     }
 
     .btn-tool:active { opacity: 0.8; }
@@ -197,9 +197,11 @@
     <div id="timer-display" class="timer-badge">Tiempo: --:--</div>
   </header>
 
+  <!-- BARRA DE HERRAMIENTAS -->
   <div id="tools-bar" class="tools-bar hidden">
     <button class="btn-tool" id="btn-torch" onclick="toggleTorch()">🔦 Linterna</button>
     <button class="btn-tool" onclick="toggleMap(true)">🗺️ Mapa Real</button>
+    <button class="btn-tool" onclick="openAR()">👁️ Escanear RA</button>
   </div>
 
   <div id="screen-start" class="card">
@@ -234,7 +236,7 @@
     </div>
 
     <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;">
-      Busca al actor en esa ubicación. Resuelve su enigma para obtener la palabra clave.
+      Busca al actor o el marcador visual en esa ubicación. Resuelve el enigma para obtener la palabra clave.
     </p>
 
     <label for="station-code" id="label-code">Palabra Clave de la Estación:</label>
@@ -286,8 +288,8 @@
   let gpsInterval = null;
   let teamNameGlobal = "";
 
-  let currentStepIndex = 0; // 0, 1, 2, 3 (Estaciones aleatorias) - 4 (Regreso a Base)
-  let teamRouteIndexes = []; // Array con los índices en orden aleatorio único para el equipo
+  let currentStepIndex = 0;
+  let teamRouteIndexes = [];
 
   let torchTrack = null;
   let isTorchOn = false;
@@ -298,7 +300,6 @@
   let currentUserLat = null;
   let currentUserLng = null;
 
-  // DEFINICIÓN DE LAS 4 ESTACIONES Y SUS CÓDIGOS DE VALIDACIÓN
   const allStations = [
     { id: 0, title: "Estación 1: Plaza Constitución (Actor: El Brujo)", name: "Plaza Constitución", code: "AQUELARRE", lat: 36.8385, lng: -2.4442 },
     { id: 1, title: "Estación 2: Parque Municipal (Actor: La Llorona)", name: "Parque Municipal", code: "NIGHT2026", lat: 36.8368, lng: -2.4428 },
@@ -306,10 +307,9 @@
     { id: 3, title: "Estación 4: Centro Cultural (Actor: La Sombra)", name: "Centro Cultural", code: "SANTOS", lat: 36.8345, lng: -2.4400 }
   ];
 
-  // PUNTO DE ORIGEN / MESA DE CONTROL FINAL
   const baseStation = {
     title: "🏁 Punto de Inicio: Mesa de Control (Plaza Constitución)",
-    code: "FIN2026", // Código que da el Staff en la mesa para cerrar el juego
+    code: "FIN2026",
     lat: 36.8385,
     lng: -2.4442
   };
@@ -320,6 +320,10 @@
     restoreSession();
     initGPSWatch();
   });
+
+  function openAR() {
+    window.location.href = 'ar-test.html';
+  }
 
   function saveSession(state) {
     localStorage.setItem('escape_state', state);
@@ -455,7 +459,6 @@
     const btn = document.getElementById('btn-start');
     btn.disabled = true;
 
-    // GENERAR RUTA COMPLETAMENTE ALEATORIA SIN REPETIR (Fisher-Yates Shuffle)
     teamRouteIndexes = [0, 1, 2, 3];
     for (let i = teamRouteIndexes.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -530,7 +533,7 @@
       const stationId = teamRouteIndexes[currentStepIndex];
       return allStations[stationId];
     } else {
-      return baseStation; // Regreso obligatorio a base
+      return baseStation;
     }
   }
 
@@ -540,7 +543,7 @@
     if (currentStepIndex < 4) {
       document.getElementById('progress-indicator').innerText = `Estación ${currentStepIndex + 1} de 4`;
       document.getElementById('assigned-station').innerText = target.title;
-      document.getElementById('station-instructions').innerText = "Busca al actor en esa ubicación. Resuelve su enigma para obtener la palabra clave.";
+      document.getElementById('station-instructions').innerText = "Busca al actor o el marcador visual en esa ubicación. Resuelve el enigma para obtener la palabra clave.";
       document.getElementById('label-code').innerText = "Palabra Clave de la Estación:";
     } else {
       document.getElementById('progress-indicator').innerText = "🏁 FASE FINAL";
