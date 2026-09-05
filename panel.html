@@ -168,6 +168,13 @@
   let panelMapMarker = null;
   let currentTrackedTeam = null;
 
+  // ESTACIONES FIJAS QUE SE MOSTRARÁN SIEMPRE EN EL PANEL DE CONTROL
+  const allStations = [
+    { title: "Estación A: Plaza Constitución", desc: "Actor: El Brujo", lat: 36.8385, lng: -2.4442 },
+    { title: "Estación B: Parque Municipal", desc: "Actor: La Llorona", lat: 36.8368, lng: -2.4428 },
+    { title: "Estación C: Iglesia Vieja", desc: "Actor: El Monje", lat: 36.8358, lng: -2.4412 }
+  ];
+
   function formatTime(val) {
     if (!val) return '-';
     let str = String(val).trim();
@@ -218,7 +225,6 @@
         const latClean = cleanCoordinate(item.lat, true);
         const lngClean = cleanCoordinate(item.lng, false);
 
-        // SOLO MOSTRAR UBICACIÓN SI EL EQUIPO NO HA FINALIZADO
         if (item.status !== "Finalizado") {
           if (latClean !== null && lngClean !== null) {
             actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', '${latClean}', '${lngClean}')">📍 Ubicación</button>`);
@@ -227,7 +233,6 @@
           }
         }
 
-        // SI EL MAPA ESTÁ ABIERTO Y EL EQUIPO FINALIZA, SE CIERRA EL MAPA
         if (currentTrackedTeam && item.team === currentTrackedTeam) {
           if (item.status === "Finalizado") {
             closePanelMap();
@@ -306,13 +311,20 @@
         panelMap = null;
       }
 
-      panelMap = L.map('panel-map').setView([lat, lng], 17);
+      panelMap = L.map('panel-map').setView([lat, lng], 16);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: 'OpenStreetMap'
       }).addTo(panelMap);
 
+      // 1. MOSTRAR TODAS LAS ESTACIONES EN EL MAPA DEL PANEL
+      allStations.forEach(s => {
+        L.marker([s.lat, s.lng]).addTo(panelMap)
+          .bindPopup(`<b>${s.title}</b><br><span style="color:#ff6b00;">${s.desc}</span>`);
+      });
+
+      // 2. MOSTRAR EL MARCADOR EN TIEMPO REAL DEL PARTICIPANTE
       panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
         .bindPopup(`<strong>${teamName}</strong><br>Rastreando ubicación en tiempo real...`)
         .openPopup();
