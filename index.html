@@ -302,6 +302,12 @@
     "Estación C: Iglesia Vieja (Actor: El Monje)"
   ];
 
+  const mapPoints = [
+    { id: "A", key: "Estación A", title: "Estación A: Plaza Constitución", desc: "Actor: El Brujo", lat: 36.8385, lng: -2.4442 },
+    { id: "B", key: "Estación B", title: "Estación B: Parque Municipal", desc: "Actor: La Llorona", lat: 36.8368, lng: -2.4428 },
+    { id: "C", key: "Estación C", title: "Estación C: Iglesia Vieja", desc: "Actor: El Monje", lat: 36.8358, lng: -2.4412 }
+  ];
+
   const validCodes = ["AQUELARRE", "NIGHT2026", "HURCAL"];
   const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
 
@@ -345,7 +351,7 @@
       document.getElementById('screen-start').classList.add('hidden');
       document.getElementById('screen-wait').classList.add('hidden');
       document.getElementById('screen-game').classList.add('hidden');
-      document.getElementById('tools-bar').classList.add('hidden'); // OCULTA HERRAMIENTAS AL FINALIZAR
+      document.getElementById('tools-bar').classList.add('hidden');
       document.getElementById('screen-end').classList.remove('hidden');
     }
   }
@@ -532,7 +538,6 @@
     clearInterval(timerInterval);
     document.getElementById('btn-validate').disabled = true;
 
-    // Apagar linterna y cerrar mapa en caso de estar abiertos al ganar
     if (isTorchOn) toggleTorch();
     toggleMap(false);
 
@@ -548,7 +553,7 @@
     fetch(`${WEB_APP_URL}?action=finish&teamName=${encodeURIComponent(teamNameGlobal)}&endTime=${encodeURIComponent(endHourFormatted)}&totalTime=${encodeURIComponent(timeFormatted)}`, { mode: 'no-cors' });
 
     document.getElementById('screen-game').classList.add('hidden');
-    document.getElementById('tools-bar').classList.add('hidden'); // OCULTA BARRAS DE HERRAMIENTAS
+    document.getElementById('tools-bar').classList.add('hidden');
     document.getElementById('screen-end').classList.remove('hidden');
     document.getElementById('final-time').innerText = timeFormatted;
   }
@@ -561,15 +566,13 @@
       attribution: 'OpenStreetMap'
     }).addTo(leafletMap);
 
-    const mapPoints = [
-      { lat: 36.8385, lng: -2.4442, title: "Estación A: Plaza Constitución", desc: "Actor: El Brujo" },
-      { lat: 36.8368, lng: -2.4428, title: "Estación B: Parque Municipal", desc: "Actor: La Llorona" },
-      { lat: 36.8358, lng: -2.4412, title: "Estación C: Iglesia Vieja", desc: "Actor: El Monje" }
-    ];
-
+    // FILTRAR SOLO LA ESTACIÓN ASIGNADA AL PARTICIPANTE
     mapPoints.forEach(p => {
-      L.marker([p.lat, p.lng]).addTo(leafletMap)
-        .bindPopup(`<strong>${p.title}</strong><br><span style="color:#ff6b00;">${p.desc}</span>`);
+      if (assignedStationGlobal && assignedStationGlobal.includes(p.key)) {
+        L.marker([p.lat, p.lng]).addTo(leafletMap)
+          .bindPopup(`<strong>${p.title}</strong><br><span style="color:#ff6b00;">${p.desc}</span>`)
+          .openPopup();
+      }
     });
   }
 
