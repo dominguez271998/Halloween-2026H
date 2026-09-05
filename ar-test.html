@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Prueba Realidad Aumentada - Escape Room</title>
+  <title>Prueba RA - Escudo Huércal</title>
 
   <!-- A-Frame VR Framework -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -11,11 +11,7 @@
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      font-family: system-ui, -apple-system, sans-serif;
-    }
+    body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
 
     .ar-overlay {
       position: fixed;
@@ -31,7 +27,6 @@
       z-index: 9999;
       text-align: center;
       font-size: 0.9rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
       width: 85%;
       max-width: 380px;
     }
@@ -58,35 +53,71 @@
 <body>
 
   <div class="ar-overlay">
-    👻 Apunta la cámara al marcador de la estación
+    👻 Apunta la cámara al escudo de Huércal
   </div>
 
   <button class="btn-close" onclick="window.history.back()">Volver al Juego</button>
 
-  <!-- Escena AR WebGL -->
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
     
-    <!-- Marcador HIRO (Símbolo físico que escanea la cámara) -->
-    <a-marker preset="hiro">
+    <!-- CARGA DEL MARCADOR PERSONALIZADO CON EL ESCUDO -->
+    <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
       
-      <!-- Cubo 3D giratorio color naranja -->
-      <a-box position="0 0.5 0" 
-             material="color: #ff6b00; opacity: 0.9;" 
-             animation="property: rotation; to: 0 360 0; loop: true; dur: 5000">
-      </a-box>
+      <!-- CONTENEDOR FANTASMA CON ANIMACIÓN DE FLOTAR (Arriba y Abajo) -->
+      <a-entity position="0 0.5 0" 
+                animation="property: position; to: 0 1.0 0; dir: alternate; loop: true; dur: 1800; easing: easeInOutSine">
+        
+        <!-- CABEZA DEL FANTASMA (Esfera semi-transparente) -->
+        <a-sphere position="0 0.8 0" radius="0.4" color="#e2e8f0" material="opacity: 0.88; transparent: true"></a-sphere>
+        
+        <!-- CUERPO DEL FANTASMA (Cono invertido) -->
+        <a-cone position="0 0.3 0" radius-bottom="0.5" radius-top="0.4" height="0.8" color="#e2e8f0" material="opacity: 0.88; transparent: true"></a-cone>
+        
+        <!-- OJOS NEGROS -->
+        <a-sphere position="-0.12 0.88 0.32" radius="0.06" color="#000000"></a-sphere>
+        <a-sphere position="0.12 0.88 0.32" radius="0.06" color="#000000"></a-sphere>
 
-      <!-- Texto en Realidad Aumentada que flota sobre el cubo -->
-      <a-text value="CLAVE: SOMBRA2026" 
-              position="-1.1 1.3 0" 
-              color="#ffffff" 
-              scale="1.2 1.2 1.2">
-      </a-text>
+        <!-- BOCADILLO DE TEXTO CON LA PISTA -->
+        <a-plane position="0 1.6 0" width="2.4" height="0.7" color="#111111" material="opacity: 0.9; transparent: true">
+          <a-text value="¡Buscabas la Sombra!\nTu clave es: AQUELARRE" 
+                  align="center" 
+                  width="2.2" 
+                  color="#ff6b00" 
+                  position="0 0 0.02">
+          </a-text>
+        </a-plane>
+
+      </a-entity>
 
     </a-marker>
 
-    <!-- Cámara virtual -->
     <a-entity camera></a-entity>
   </a-scene>
+
+<script>
+  let hasSpoken = false;
+
+  // EVENTO: CUANDO LA CÁMARA DETECTA EL ESCUDO
+  document.querySelector('#marker-escudo').addEventListener('markerFound', () => {
+    if (!hasSpoken) {
+      hasSpoken = true;
+
+      // Sintetizador de voz del móvil
+      if ('speechSynthesis' in window) {
+        const mensaje = new SpeechSynthesisUtterance("¡Buscabas la Sombra de Huércal! Tu palabra clave es Aquelarre");
+        mensaje.lang = 'es-ES';
+        mensaje.pitch = 0.5; // Voz más grave tipo espectro/fantasma
+        mensaje.rate = 0.85;  // Hablar un poco más lento
+        window.speechSynthesis.speak(mensaje);
+      }
+    }
+  });
+
+  // SI SE PIERDE EL MARCADOR, PERMITIR QUE VUELVA A HABLAR LA PRÓXIMA VEZ QUE LO ENFOQUE
+  document.querySelector('#marker-escudo').addEventListener('markerLost', () => {
+    hasSpoken = false;
+  });
+</script>
 
 </body>
 </html>
