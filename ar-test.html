@@ -61,28 +61,29 @@
 
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
     
-    <!-- PRECARGA DE ARCHIVOS OBJ Y MTL -->
+    <!-- PRECARGA DE ARCHIVOS SIN ESPACIOS -->
     <a-assets>
-      <a-asset-item id="ghost-obj" src="Halloween Ghost.obj"></a-asset-item>
-      <a-asset-item id="ghost-mtl" src="Halloween Ghost.mtl"></a-asset-item>
+      <a-asset-item id="ghost-obj" src="ghost.obj"></a-asset-item>
+      <a-asset-item id="ghost-mtl" src="ghost.mtl"></a-asset-item>
     </a-assets>
 
     <!-- MARCADOR DEL ESCUDO -->
     <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
       
-      <!-- ILUMINACIÓN DE LA ESCENA -->
-      <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-      <a-light type="directional" color="#ff6b00" intensity="1.2" position="0 2 1"></a-light>
+      <!-- ILUMINACIÓN -->
+      <a-light type="ambient" color="#ffffff" intensity="0.9"></a-light>
+      <a-light type="directional" color="#ff6b00" intensity="1.5" position="0 2 1"></a-light>
 
-      <!-- MODELO 3D EN FORMATO OBJ + MTL CON ANIMACIÓN DE LEVITACIÓN -->
+      <!-- MODELO 3D OBJ CON MATERIAL ESPECTRAL DE RESPALDO -->
       <a-obj-model src="#ghost-obj"
                    mtl="#ghost-mtl"
+                   material="color: #60a5fa; opacity: 0.85; transparent: true;"
                    position="0 0 0"
-                   scale="0.1 0.1 0.1"
+                   scale="0.05 0.05 0.05"
                    animation="property: position; to: 0 0.3 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
       </a-obj-model>
 
-      <!-- cartel flotante CON LA CLAVE -->
+      <!-- CARTEL FLOTANTE CON LA CLAVE -->
       <a-plane position="0 2.2 0" width="2.6" height="0.8" color="#000000" material="opacity: 0.85; transparent: true">
         <a-text value="¡HAS ENCONTRADO EL ESPECTRO!\nClave: AQUELARRE" 
                 align="center" 
@@ -100,21 +101,19 @@
 <script>
   let hasSpoken = false;
 
-  // EVENTO AL DETECTAR EL ESCUDO
   document.querySelector('#marker-escudo').addEventListener('markerFound', () => {
     if (!hasSpoken) {
       hasSpoken = true;
       if ('speechSynthesis' in window) {
         const mensaje = new SpeechSynthesisUtterance("Has encontrado al espectro de Huércal. Tu palabra clave es Aquelarre.");
         mensaje.lang = 'es-ES';
-        mensaje.pitch = 0.4; // Voz grave de fantasma
-        mensaje.rate = 0.8;  // Velocidad pausada
+        mensaje.pitch = 0.4;
+        mensaje.rate = 0.8;
         window.speechSynthesis.speak(mensaje);
       }
     }
   });
 
-  // EVENTO AL PERDER EL ESCUDO DE LA VISTA
   document.querySelector('#marker-escudo').addEventListener('markerLost', () => {
     hasSpoken = false;
   });
