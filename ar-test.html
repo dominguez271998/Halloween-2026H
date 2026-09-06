@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Prueba RA - Fantasma Realista (OBJ)</title>
+  <title>Prueba RA - Fantasma 3D</title>
 
   <!-- A-Frame VR Framework -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-
   <!-- AR.js para A-Frame -->
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <!-- Extras para animaciones 3D GLTF -->
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
@@ -61,29 +62,27 @@
 
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
     
-    <!-- PRECARGA DE ARCHIVOS SIN ESPACIOS -->
     <a-assets>
-      <a-asset-item id="ghost-obj" src="ghost.obj"></a-asset-item>
-      <a-asset-item id="ghost-mtl" src="ghost.mtl"></a-asset-item>
+      <!-- Carga de modelo GLB (Un solo archivo con geografía, colores y animaciones incluidas) -->
+      <a-asset-item id="modelo-fantasma" src="https://raw.githack.com/n5ro/aframe-physics-system/master/examples/assets/models/ghost.glb"></a-asset-item>
     </a-assets>
 
-    <!-- MARCADOR DEL ESCUDO -->
+    <!-- MARCADOR ESCUDO -->
     <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
       
-      <!-- ILUMINACIÓN -->
-      <a-light type="ambient" color="#ffffff" intensity="0.9"></a-light>
-      <a-light type="directional" color="#ff6b00" intensity="1.5" position="0 2 1"></a-light>
+      <!-- LUZ ESPACIAL -->
+      <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
+      <a-light type="point" color="#ff6b00" intensity="2" position="0 2 1"></a-light>
 
-      <!-- MODELO 3D OBJ CON MATERIAL ESPECTRAL DE RESPALDO -->
-      <a-obj-model src="#ghost-obj"
-                   mtl="#ghost-mtl"
-                   material="color: #60a5fa; opacity: 0.85; transparent: true;"
-                   position="0 0 0"
-                   scale="0.05 0.05 0.05"
-                   animation="property: position; to: 0 0.3 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-      </a-obj-model>
+      <!-- FANTASMA 3D ANIMADO -->
+      <a-entity gltf-model="#modelo-fantasma"
+                position="0 0.2 0"
+                scale="0.8 0.8 0.8"
+                animation-mixer
+                animation="property: position; to: 0 0.6 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
+      </a-entity>
 
-      <!-- CARTEL FLOTANTE CON LA CLAVE -->
+      <!-- CARTEL CON CLAVE -->
       <a-plane position="0 2.2 0" width="2.6" height="0.8" color="#000000" material="opacity: 0.85; transparent: true">
         <a-text value="¡HAS ENCONTRADO EL ESPECTRO!\nClave: AQUELARRE" 
                 align="center" 
