@@ -174,12 +174,13 @@
   let panelMapMarker = null;
   let currentTrackedTeam = null;
 
+  // ESTACIONES REALES EN HUÉRCAL DE ALMERÍA
   const allStations = [
-    { title: "🏁 Base: Mesa de Control", desc: "Punto de Inicio y Salida", lat: 36.8385, lng: -2.4442 },
-    { title: "Estación 1: Plaza Constitución", desc: "Actor: El Brujo", lat: 36.8385, lng: -2.4442 },
-    { title: "Estación 2: Parque Municipal", desc: "Actor: La Llorona", lat: 36.8368, lng: -2.4428 },
-    { title: "Estación 3: Iglesia Vieja", desc: "Actor: El Monje", lat: 36.8358, lng: -2.4412 },
-    { title: "Estación 4: Centro Cultural", desc: "Actor: La Sombra", lat: 36.8345, lng: -2.4400 }
+    { title: "🏁 Base: Mesa de Control (Cortijo Moreno)", desc: "Punto de Inicio y Salida", lat: 36.8836232, lng: -2.4376785 },
+    { title: "Estación 1: Centro Social 'José Guirado'", desc: "Prueba 1", lat: 36.8861492, lng: -2.4364976 },
+    { title: "Estación 2: Parque de las Familias 'Loquilandia'", desc: "Prueba 2", lat: 36.8895202, lng: -2.4481997 },
+    { title: "Estación 3: Ubicación 3 (Paseo del Carmen)", desc: "Prueba 3", lat: 36.875937, lng: -2.440873 },
+    { title: "Estación 4: Centro Cultural 'Cortijo Moreno'", desc: "Prueba 4", lat: 36.8836232, lng: -2.4376785 }
   ];
 
   function formatTime(val) {
@@ -331,7 +332,7 @@
         panelMap = null;
       }
 
-      panelMap = L.map('panel-map').setView([lat, lng], 16);
+      panelMap = L.map('panel-map').setView([lat, lng], 15);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
