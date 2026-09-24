@@ -43,7 +43,7 @@
     .btn-approve-all:hover { opacity: 0.9; }
     .btn-approve-all:active { transform: scale(0.97); }
     
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
     .stat-card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: center; }
     .stat-value { font-size: 2rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
     
@@ -119,6 +119,10 @@
       <div id="stat-total" class="stat-value">0</div>
     </div>
     <div class="stat-card">
+      <div>Participantes Totales</div>
+      <div id="stat-members" class="stat-value" style="color: #3b82f6;">0</div>
+    </div>
+    <div class="stat-card">
       <div>Pendientes Salida</div>
       <div id="stat-pending" class="stat-value" style="color: var(--warning);">0</div>
     </div>
@@ -136,8 +140,9 @@
     <thead>
       <tr>
         <th>Equipo</th>
+        <th>Participantes</th>
         <th>Estado</th>
-        <th>Estación Inicial</th>
+        <th>Progreso / Estación</th>
         <th>Hora Salida</th>
         <th>Hora Llegada</th>
         <th>Tiempo Total</th>
@@ -145,7 +150,7 @@
       </tr>
     </thead>
     <tbody id="table-body">
-      <tr><td colspan="7" style="text-align:center;">Cargando datos del servidor...</td></tr>
+      <tr><td colspan="8" style="text-align:center;">Cargando datos del servidor...</td></tr>
     </tbody>
   </table>
 
@@ -168,11 +173,12 @@
   let panelMapMarker = null;
   let currentTrackedTeam = null;
 
-  // ESTACIONES FIJAS QUE SE MOSTRARÁN SIEMPRE EN EL PANEL DE CONTROL
   const allStations = [
-    { title: "Estación A: Plaza Constitución", desc: "Actor: El Brujo", lat: 36.8385, lng: -2.4442 },
-    { title: "Estación B: Parque Municipal", desc: "Actor: La Llorona", lat: 36.8368, lng: -2.4428 },
-    { title: "Estación C: Iglesia Vieja", desc: "Actor: El Monje", lat: 36.8358, lng: -2.4412 }
+    { title: "🏁 Base: Mesa de Control", desc: "Punto de Inicio y Salida", lat: 36.8385, lng: -2.4442 },
+    { title: "Estación 1: Plaza Constitución", desc: "Actor: El Brujo", lat: 36.8385, lng: -2.4442 },
+    { title: "Estación 2: Parque Municipal", desc: "Actor: La Llorona", lat: 36.8368, lng: -2.4428 },
+    { title: "Estación 3: Iglesia Vieja", desc: "Actor: El Monje", lat: 36.8358, lng: -2.4412 },
+    { title: "Estación 4: Centro Cultural", desc: "Actor: La Sombra", lat: 36.8345, lng: -2.4400 }
   ];
 
   function formatTime(val) {
@@ -208,6 +214,7 @@
       let pendingCount = 0;
       let activeCount = 0;
       let doneCount = 0;
+      let totalParticipants = 0;
 
       const tbody = document.getElementById('table-body');
       tbody.innerHTML = data.slice().reverse().map(item => {
@@ -215,6 +222,9 @@
         if (item.status === "En curso") { badgeClass = "badge-active"; activeCount++; }
         else if (item.status === "Finalizado") { badgeClass = "badge-done"; doneCount++; }
         else { pendingCount++; }
+
+        const teamMembers = parseInt(item.participantCount, 10) || 2;
+        totalParticipants += teamMembers;
 
         let actions = [];
 
@@ -247,6 +257,7 @@
         return `
           <tr>
             <td><strong>${escapeHtml(item.team)}</strong></td>
+            <td><strong>👥 ${teamMembers}</strong></td>
             <td><span class="badge ${badgeClass}">${item.status}</span></td>
             <td>${escapeHtml(item.station || '-')}</td>
             <td>${formatTime(item.startTime)}</td>
@@ -258,6 +269,7 @@
       }).join('');
 
       document.getElementById('stat-total').innerText = data.length;
+      document.getElementById('stat-members').innerText = totalParticipants;
       document.getElementById('stat-pending').innerText = pendingCount;
       document.getElementById('stat-active').innerText = activeCount;
       document.getElementById('stat-done').innerText = doneCount;
@@ -318,13 +330,11 @@
         attribution: 'OpenStreetMap'
       }).addTo(panelMap);
 
-      // 1. MOSTRAR TODAS LAS ESTACIONES EN EL MAPA DEL PANEL
       allStations.forEach(s => {
         L.marker([s.lat, s.lng]).addTo(panelMap)
           .bindPopup(`<b>${s.title}</b><br><span style="color:#ff6b00;">${s.desc}</span>`);
       });
 
-      // 2. MOSTRAR EL MARCADOR EN TIEMPO REAL DEL PARTICIPANTE
       panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
         .bindPopup(`<strong>${teamName}</strong><br>Rastreando ubicación en tiempo real...`)
         .openPopup();
