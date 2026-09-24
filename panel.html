@@ -38,10 +38,11 @@
       font-size: 0.95rem;
       text-transform: uppercase;
       box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
-      transition: transform 0.1s ease;
+      transition: transform 0.1s ease, opacity 0.2s;
     }
     .btn-approve-all:hover { opacity: 0.9; }
     .btn-approve-all:active { transform: scale(0.97); }
+    .btn-approve-all:disabled { opacity: 0.5; cursor: not-allowed; }
     
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
     .stat-card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: center; }
@@ -110,7 +111,7 @@
       <div id="last-update" style="color: #888; font-size: 0.85rem; margin-top: 4px;">Actualizando...</div>
     </div>
     
-    <button class="btn-approve-all" onclick="approveAllTeams()">🚀 Dar Salida a Todos</button>
+    <button id="btn-approve-all-main" class="btn-approve-all" onclick="approveAllTeams()">🚀 Dar Salida a Todos</button>
   </div>
 
   <div class="stats-grid">
@@ -229,7 +230,7 @@
         let actions = [];
 
         if (item.status === "Pendiente") {
-          actions.push(`<button class="btn-action btn-approve" onclick="approveStart('${escapeHtml(item.team)}')">🟢 Salida</button>`);
+          actions.push(`<button class="btn-action btn-approve" onclick="approveStart('${escapeHtml(item.team)}', this)">🟢 Salida</button>`);
         }
 
         const latClean = cleanCoordinate(item.lat, true);
@@ -280,17 +281,22 @@
     }
   }
 
-  async function approveStart(teamName) {
+  async function approveStart(teamName, btnElement) {
+    if (btnElement) btnElement.disabled = true;
     try {
       await fetch(`${WEB_APP_URL}?action=approve&teamName=${encodeURIComponent(teamName)}`);
       loadDashboard();
     } catch (err) {
       alert("Error al dar salida al equipo.");
+      if (btnElement) btnElement.disabled = false;
     }
   }
 
   async function approveAllTeams() {
     if (!confirm("¿Estás seguro de que deseas dar la salida a TODOS los equipos pendientes a la vez?")) return;
+
+    const mainBtn = document.getElementById('btn-approve-all-main');
+    if (mainBtn) mainBtn.disabled = true;
 
     try {
       const res = await fetch(`${WEB_APP_URL}?action=approveAll`);
@@ -301,6 +307,8 @@
       }
     } catch (err) {
       alert("Error de conexión al dar la salida masiva.");
+    } finally {
+      if (mainBtn) mainBtn.disabled = false;
     }
   }
 
@@ -340,7 +348,7 @@
         .openPopup();
 
       panelMap.invalidateSize();
-    }, 300);
+    }, 200);
   }
 
   function showNoLocation(teamName) {
