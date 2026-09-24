@@ -112,6 +112,7 @@
       font-size: 1.1rem;
       cursor: pointer;
       text-transform: uppercase;
+      transition: background 0.2s, opacity 0.2s;
     }
 
     button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -320,6 +321,20 @@
 
   const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
 
+  // Helper para realizar peticiones HTTP con Timeout integrado y evitar cuelgues
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(id);
+      return response;
+    } catch (err) {
+      clearTimeout(id);
+      throw err;
+    }
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
     restoreSession();
     initGPSWatch();
@@ -330,45 +345,53 @@
   }
 
   function saveSession(state) {
-    localStorage.setItem('escape_state', state);
-    localStorage.setItem('escape_team', teamNameGlobal);
-    localStorage.setItem('escape_route', JSON.stringify(teamRouteIndexes));
-    localStorage.setItem('escape_step', currentStepIndex);
-    if (startTime) localStorage.setItem('escape_startTime', startTime);
+    try {
+      localStorage.setItem('escape_state', state);
+      localStorage.setItem('escape_team', teamNameGlobal);
+      localStorage.setItem('escape_route', JSON.stringify(teamRouteIndexes));
+      localStorage.setItem('escape_step', currentStepIndex);
+      if (startTime) localStorage.setItem('escape_startTime', startTime);
+    } catch (e) {
+      console.warn("No se pudo guardar la sesión en LocalStorage:", e);
+    }
   }
 
   function restoreSession() {
-    const savedState = localStorage.getItem('escape_state');
-    if (!savedState) return;
+    try {
+      const savedState = localStorage.getItem('escape_state');
+      if (!savedState) return;
 
-    teamNameGlobal = localStorage.getItem('escape_team') || "";
-    const savedRoute = localStorage.getItem('escape_route');
-    if (savedRoute) teamRouteIndexes = JSON.parse(savedRoute);
-    currentStepIndex = parseInt(localStorage.getItem('escape_step') || "0");
-    const savedStartTime = localStorage.getItem('escape_startTime');
+      teamNameGlobal = localStorage.getItem('escape_team') || "";
+      const savedRoute = localStorage.getItem('escape_route');
+      if (savedRoute) teamRouteIndexes = JSON.parse(savedRoute);
+      currentStepIndex = parseInt(localStorage.getItem('escape_step') || "0", 10);
+      const savedStartTime = localStorage.getItem('escape_startTime');
 
-    if (savedState === 'wait') {
-      document.getElementById('screen-start').classList.add('hidden');
-      document.getElementById('screen-wait').classList.remove('hidden');
-      document.getElementById('tools-bar').classList.remove('hidden');
-      document.getElementById('wait-team-name').innerText = teamNameGlobal;
+      if (savedState === 'wait') {
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-wait').classList.remove('hidden');
+        document.getElementById('tools-bar').classList.remove('hidden');
+        document.getElementById('wait-team-name').innerText = teamNameGlobal;
 
-      statusPollInterval = setInterval(checkStartApproval, 3000);
-    } else if (savedState === 'game') {
-      startTime = parseInt(savedStartTime) || Date.now();
-      document.getElementById('screen-start').classList.add('hidden');
-      document.getElementById('screen-game').classList.remove('hidden');
-      document.getElementById('tools-bar').classList.remove('hidden');
-      document.getElementById('display-team-name').innerText = teamNameGlobal;
+        startApprovalPolling();
+      } else if (savedState === 'game') {
+        startTime = parseInt(savedStartTime, 10) || Date.now();
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-game').classList.remove('hidden');
+        document.getElementById('tools-bar').classList.remove('hidden');
+        document.getElementById('display-team-name').innerText = teamNameGlobal;
 
-      updateGameUI();
-      startTimer();
-    } else if (savedState === 'end') {
-      document.getElementById('screen-start').classList.add('hidden');
-      document.getElementById('screen-wait').classList.add('hidden');
-      document.getElementById('screen-game').classList.add('hidden');
-      document.getElementById('tools-bar').classList.add('hidden');
-      document.getElementById('screen-end').classList.remove('hidden');
+        updateGameUI();
+        startTimer();
+      } else if (savedState === 'end') {
+        document.getElementById('screen-start').classList.add('hidden');
+        document.getElementById('screen-wait').classList.add('hidden');
+        document.getElementById('screen-game').classList.add('hidden');
+        document.getElementById('tools-bar').classList.add('hidden');
+        document.getElementById('screen-end').classList.remove('hidden');
+      }
+    } catch (err) {
+      console.error("Error al restaurar sesión:", err);
     }
   }
 
@@ -380,8 +403,8 @@
           currentUserLng = pos.coords.longitude;
           if (teamNameGlobal) sendLocationToServer(currentUserLat, currentUserLng);
         },
-        (err) => console.warn("Error GPS inicial:", err),
-        { enableHighAccuracy: true, timeout: 8000 }
+        (err) => console.warn("GPS no disponible inicialmente:", err),
+        { enableHighAccuracy: true, timeout: 6000 }
       );
 
       navigator.geolocation.watchPosition(
@@ -397,10 +420,11 @@
             sendLocationToServer(currentUserLat, currentUserLng);
           }
         },
-        (err) => console.warn("Error rastreo GPS:", err),
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 }
+        (err) => console.warn("Sombra de GPS:", err),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 3000 }
       );
 
+      if (gpsInterval) clearInterval(gpsInterval);
       gpsInterval = setInterval(() => {
         if (teamNameGlobal && currentUserLat && currentUserLng) {
           sendLocationToServer(currentUserLat, currentUserLng);
@@ -412,7 +436,7 @@
   function sendLocationToServer(lat, lng) {
     if (!lat || !lng || !teamNameGlobal) return;
     fetch(`${WEB_APP_URL}?action=updateLocation&teamName=${encodeURIComponent(teamNameGlobal)}&lat=${lat}&lng=${lng}`, { mode: 'no-cors' })
-      .catch(e => console.error("Error enviando ubicación:", e));
+      .catch(() => {});
   }
 
   function updateUserMarker(lat, lng) {
@@ -451,6 +475,8 @@
     const teamInput = document.getElementById('team-name').value.trim();
     const membersInput = parseInt(document.getElementById('team-members').value, 10);
     const errorDiv = document.getElementById('register-error');
+    const btn = document.getElementById('btn-start');
+
     errorDiv.classList.add('hidden');
 
     const validationError = validateInputName(teamInput);
@@ -466,9 +492,11 @@
       return;
     }
 
-    teamNameGlobal = teamInput;
-    const btn = document.getElementById('btn-start');
+    // Bloqueo de botón instantáneo para máxima fluidez visual
     btn.disabled = true;
+    btn.innerText = "REGISTRANDO EQUIPO...";
+
+    teamNameGlobal = teamInput;
 
     teamRouteIndexes = [0, 1, 2, 3];
     for (let i = teamRouteIndexes.length - 1; i > 0; i--) {
@@ -482,7 +510,7 @@
 
     try {
       const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&participantCount=${membersInput}&assignedStation=${encodeURIComponent(initialProgressText)}`;
-      const response = await fetch(requestUrl);
+      const response = await fetchWithTimeout(requestUrl, {}, 8000);
       const textResponse = await response.text();
       let data = JSON.parse(textResponse);
 
@@ -490,6 +518,7 @@
         errorDiv.innerText = "¡Ese nombre de equipo ya existe! Elige uno diferente.";
         errorDiv.classList.remove('hidden');
         btn.disabled = false;
+        btn.innerText = "REGISTRAR EQUIPO";
         return;
       }
 
@@ -505,19 +534,26 @@
         document.getElementById('tools-bar').classList.remove('hidden');
         document.getElementById('wait-team-name').innerText = teamNameGlobal;
 
-        statusPollInterval = setInterval(checkStartApproval, 3000);
+        startApprovalPolling();
       }
 
     } catch (err) {
-      errorDiv.innerText = "Error de conexión con el servidor. Inténtalo de nuevo.";
+      errorDiv.innerText = "Error de red o conexión lenta. Comprueba tus datos e inténtalo de nuevo.";
       errorDiv.classList.remove('hidden');
       btn.disabled = false;
+      btn.innerText = "REGISTRAR EQUIPO";
     }
+  }
+
+  function startApprovalPolling() {
+    if (statusPollInterval) clearInterval(statusPollInterval);
+    // Sondeo ultrarrápido cada 2 segundos
+    statusPollInterval = setInterval(checkStartApproval, 2000);
   }
 
   async function checkStartApproval() {
     try {
-      const response = await fetch(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`);
+      const response = await fetchWithTimeout(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`, {}, 5000);
       const data = await response.json();
 
       if (data.status === "En curso") {
@@ -535,7 +571,7 @@
         startTimer();
       }
     } catch (err) {
-      console.error("Esperando salida de la organización...", err);
+      // Si la consulta de fondo falla por mala cobertura, se ignora pacíficamente en la siguiente vuelta
     }
   }
 
@@ -580,14 +616,15 @@
   }
 
   async function validateCode() {
-    const input = document.getElementById('station-code').value.trim().toUpperCase();
+    const inputField = document.getElementById('station-code');
+    const input = inputField.value.trim().toUpperCase();
     const status = document.getElementById('game-status');
     const target = getCurrentTarget();
 
     if (input === target.code) {
       status.className = "status-msg success";
       status.innerText = "¡Código Correcto!";
-      document.getElementById('station-code').value = "";
+      inputField.value = "";
 
       currentStepIndex++;
 
@@ -611,7 +648,7 @@
         if (currentStepIndex > 4) {
           finishGame();
         }
-      }, 800);
+      }, 600);
 
     } else {
       status.className = "status-msg error";
