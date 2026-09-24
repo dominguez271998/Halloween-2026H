@@ -241,7 +241,7 @@
     </div>
 
     <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;">
-      Busca al actor o el marcador visual en esa ubicación. Resuelve el enigma para obtener la palabra clave.
+      Dirígete a esta ubicación y busca la prueba o el actor. Resuelve el enigma para obtener la palabra clave.
     </p>
 
     <label for="station-code" id="label-code">Palabra Clave de la Estación:</label>
@@ -305,23 +305,23 @@
   let currentUserLat = null;
   let currentUserLng = null;
 
+  // UBICACIONES REALES DE HUÉRCAL DE ALMERÍA
   const allStations = [
-    { id: 0, title: "Estación 1: Plaza Constitución (Actor: El Brujo)", name: "Plaza Constitución", code: "AQUELARRE", lat: 36.8385, lng: -2.4442 },
-    { id: 1, title: "Estación 2: Parque Municipal (Actor: La Llorona)", name: "Parque Municipal", code: "NIGHT2026", lat: 36.8368, lng: -2.4428 },
-    { id: 2, title: "Estación 3: Iglesia Vieja (Actor: El Monje)", name: "Iglesia Vieja", code: "HURCAL", lat: 36.8358, lng: -2.4412 },
-    { id: 3, title: "Estación 4: Centro Cultural (Actor: La Sombra)", name: "Centro Cultural", code: "SANTOS", lat: 36.8345, lng: -2.4400 }
+    { id: 0, title: "Estación 1: Centro Social 'José Guirado'", name: "Centro Social José Guirado", code: "AQUELARRE", lat: 36.8861492, lng: -2.4364976 },
+    { id: 1, title: "Estación 2: Parque de las Familias 'Loquilandia'", name: "Parque Loquilandia", code: "NIGHT2026", lat: 36.8895202, lng: -2.4481997 },
+    { id: 2, title: "Estación 3: Punto de Control (Paseo del Carmen)", name: "Ubicación 3", code: "HURCAL", lat: 36.875937, lng: -2.440873 },
+    { id: 3, title: "Estación 4: Centro Cultural 'Cortijo Moreno'", name: "Cortijo Moreno", code: "SANTOS", lat: 36.8836232, lng: -2.4376785 }
   ];
 
   const baseStation = {
-    title: "🏁 Punto de Inicio: Mesa de Control (Plaza Constitución)",
+    title: "🏁 Punto de Inicio: Mesa de Control (Cortijo Moreno)",
     code: "FIN2026",
-    lat: 36.8385,
-    lng: -2.4442
+    lat: 36.8836232,
+    lng: -2.4376785
   };
 
   const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
 
-  // Helper para realizar peticiones HTTP con Timeout integrado y evitar cuelgues
   async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -492,7 +492,6 @@
       return;
     }
 
-    // Bloqueo de botón instantáneo para máxima fluidez visual
     btn.disabled = true;
     btn.innerText = "REGISTRANDO EQUIPO...";
 
@@ -547,7 +546,6 @@
 
   function startApprovalPolling() {
     if (statusPollInterval) clearInterval(statusPollInterval);
-    // Sondeo ultrarrápido cada 2 segundos
     statusPollInterval = setInterval(checkStartApproval, 2000);
   }
 
@@ -571,7 +569,7 @@
         startTimer();
       }
     } catch (err) {
-      // Si la consulta de fondo falla por mala cobertura, se ignora pacíficamente en la siguiente vuelta
+      // Ignorar fallos de red esporádicos en polling
     }
   }
 
@@ -590,7 +588,7 @@
     if (currentStepIndex < 4) {
       document.getElementById('progress-indicator').innerText = `Estación ${currentStepIndex + 1} de 4`;
       document.getElementById('assigned-station').innerText = target.title;
-      document.getElementById('station-instructions').innerText = "Busca al actor o el marcador visual en esa ubicación. Resuelve el enigma para obtener la palabra clave.";
+      document.getElementById('station-instructions').innerText = "Dirígete a esta ubicación y busca la prueba o el actor. Resuelve el enigma para obtener la palabra clave.";
       document.getElementById('label-code').innerText = "Palabra Clave de la Estación:";
     } else {
       document.getElementById('progress-indicator').innerText = "🏁 FASE FINAL";
@@ -681,7 +679,8 @@
   }
 
   function initMap() {
-    leafletMap = L.map('map').setView([36.8375, -2.4435], 16);
+    // Centrado general en Huércal de Almería
+    leafletMap = L.map('map').setView([36.884, -2.442], 15);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
