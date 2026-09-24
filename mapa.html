@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa de Ubicaciones - Escape Room Huércal</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --card: #1a1a1a;
+      --accent: #ff6b00;
+      --text: #f0f0f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    h1 { color: var(--accent); font-size: 1.6rem; text-transform: uppercase; margin-bottom: 5px; }
+    p { color: #aaa; font-size: 0.95rem; }
+    #map { width: 100%; height: 500px; border-radius: 12px; border: 2px solid var(--accent); margin-bottom: 20px; }
+    .locations-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; }
+    .loc-card { background: var(--card); border: 1px solid #333; padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent); }
+    .loc-title { font-weight: bold; color: #fff; font-size: 1rem; margin-bottom: 5px; }
+    .loc-coords { font-size: 0.8rem; color: #888; margin-top: 5px; }
+    a.btn-maps { display: inline-block; margin-top: 8px; color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>La Sombra de Huércal - Ubicaciones Oficiales</h1>
+    <p>Mapa de distribución para el Escape Room de Huércal de Almería</p>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="locations-grid">
+    <div class="loc-card">
+      <div class="loc-title">📍 Estación 1</div>
+      <div>Centro Social 'José Guirado'</div>
+      <div class="loc-coords">Coordenadas: 36.8861492, -2.4364976</div>
+      <a class="btn-maps" href="https://www.google.es/maps/place/36%C2%B053'10.1%22N+2%C2%B026'11.4%22W/@36.8861492,-2.4364976,19z" target="_blank">Ver en Google Maps ↗</a>
+    </div>
+
+    <div class="loc-card">
+      <div class="loc-title">📍 Estación 2</div>
+      <div>Parque de las Familias 'Loquilandia'</div>
+      <div class="loc-coords">Coordenadas: 36.8895202, -2.4481997</div>
+      <a class="btn-maps" href="https://www.google.es/maps/place/36%C2%B053'22.3%22N+2%C2%B026'53.5%22W/@36.8895202,-2.4481997,19z" target="_blank">Ver en Google Maps ↗</a>
+    </div>
+
+    <div class="loc-card">
+      <div class="loc-title">📍 Estación 3</div>
+      <div>Espacio Público / Paseo del Carmen</div>
+      <div class="loc-coords">Coordenadas: 36.8759370, -2.4408730</div>
+      <a class="btn-maps" href="https://www.google.es/maps/place/36%C2%B052'33.4%22N+2%C2%B026'27.1%22W/@36.875937,-2.440873,19z" target="_blank">Ver en Google Maps ↗</a>
+    </div>
+
+    <div class="loc-card">
+      <div class="loc-title">📍 Estación 4 / Mesa de Control</div>
+      <div>Centro Cultural 'Cortijo Moreno'</div>
+      <div class="loc-coords">Coordenadas: 36.8836232, -2.4376785</div>
+      <a class="btn-maps" href="https://www.google.es/maps/place/36%C2%B053'01.0%22N+2%C2%B026'15.6%22W/@36.8836232,-2.4376785,19z" target="_blank">Ver en Google Maps ↗</a>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([36.884, -2.441], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: 'OpenStreetMap'
+    }).addTo(map);
+
+    const locations = [
+      { name: "Estación 1: Centro Social 'José Guirado'", lat: 36.8861492, lng: -2.4364976 },
+      { name: "Estación 2: Parque 'Loquilandia'", lat: 36.8895202, lng: -2.4481997 },
+      { name: "Estación 3: Paseo del Carmen", lat: 36.875937, lng: -2.440873 },
+      { name: "Estación 4 / Base: Centro Cultural 'Cortijo Moreno'", lat: 36.8836232, lng: -2.4376785 }
+    ];
+
+    const bounds = [];
+    locations.forEach(loc => {
+      const marker = L.marker([loc.lat, loc.lng]).addTo(map).bindPopup(`<b>${loc.name}</b>`);
+      bounds.push([loc.lat, loc.lng]);
+    });
+
+    map.fitBounds(bounds, { padding: [40, 40] });
+  </script>
+</body>
+</html>
