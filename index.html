@@ -98,7 +98,7 @@
       background: #222;
       color: #fff;
       font-size: 1rem;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
 
     button.btn-primary {
@@ -197,7 +197,6 @@
     <div id="timer-display" class="timer-badge">Tiempo: --:--</div>
   </header>
 
-  <!-- BARRA DE HERRAMIENTAS -->
   <div id="tools-bar" class="tools-bar hidden">
     <button class="btn-tool" id="btn-torch" onclick="toggleTorch()">🔦 Linterna</button>
     <button class="btn-tool" onclick="toggleMap(true)">🗺️ Mapa Real</button>
@@ -207,10 +206,15 @@
   <div id="screen-start" class="card">
     <h2>Registro de Equipo</h2>
     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0 15px 0;">
-      Elige un nombre para tu equipo (letras y números, de 3 a 30 caracteres).
+      Introduce los datos de tu equipo para comenzar.
     </p>
+    
     <label for="team-name">Nombre del Equipo:</label>
     <input type="text" id="team-name" placeholder="Ej: Los Cazafantasmas" maxlength="30" autocomplete="off">
+
+    <label for="team-members">Número de Participantes (mínimo 2):</label>
+    <input type="number" id="team-members" min="2" max="20" value="2" placeholder="2">
+
     <div id="register-error" class="error hidden"></div>
     <button id="btn-start" class="btn-primary" onclick="registerTeam()">Registrar Equipo</button>
   </div>
@@ -445,12 +449,19 @@
 
   async function registerTeam() {
     const teamInput = document.getElementById('team-name').value.trim();
+    const membersInput = parseInt(document.getElementById('team-members').value, 10);
     const errorDiv = document.getElementById('register-error');
     errorDiv.classList.add('hidden');
 
     const validationError = validateInputName(teamInput);
     if (validationError) {
       errorDiv.innerText = validationError;
+      errorDiv.classList.remove('hidden');
+      return;
+    }
+
+    if (isNaN(membersInput) || membersInput < 2) {
+      errorDiv.innerText = "El equipo debe tener como mínimo 2 participantes.";
       errorDiv.classList.remove('hidden');
       return;
     }
@@ -470,7 +481,7 @@
     const initialProgressText = `Estación 1/4 (${firstStationObj.name})`;
 
     try {
-      const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&assignedStation=${encodeURIComponent(initialProgressText)}`;
+      const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&participantCount=${membersInput}&assignedStation=${encodeURIComponent(initialProgressText)}`;
       const response = await fetch(requestUrl);
       const textResponse = await response.text();
       let data = JSON.parse(textResponse);
