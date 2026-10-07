@@ -3,15 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Prueba RA - Fantasma Realista GLB</title>
+  <title>Escáner RA - La Sombra de Huércal</title>
 
   <!-- A-Frame VR Framework -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  
   <!-- AR.js para A-Frame -->
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
-
-  <!-- Extras para reproducir animaciones de modelos GLTF/GLB -->
+  <!-- Extras para animaciones GLTF -->
   <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
   <style>
@@ -56,27 +54,23 @@
 </head>
 <body>
 
-  <div class="ar-overlay">
-    👻 Apunta la cámara al escudo de Huércal
+  <div class="ar-overlay" id="ar-status">
+    👁️ Busca y escanea los símbolos de la Sombra
   </div>
 
   <button class="btn-close" onclick="window.history.back()">Volver al Juego</button>
 
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best;">
     
-    <!-- PRECARGA DEL MODELO GLB REALISTA -->
     <a-assets>
-      <a-asset-item id="modelo-fantasma" src="ghost.glb"></a-asset-item>
+      <a-asset-item id="modelo-fantasma" src="fantasma.glb"></a-asset-item>
     </a-assets>
 
-    <!-- MARCADOR ESCUDO -->
+    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (CORRECTO) -->
     <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
-      
-      <!-- ILUMINACIÓN DE LA ESCENA -->
       <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
       <a-light type="directional" color="#ff6b00" intensity="1.5" position="0 2 1"></a-light>
 
-      <!-- TU MODELO 3D REALISTA -->
       <a-entity gltf-model="#modelo-fantasma"
                 position="0 0.2 0"
                 scale="0.5 0.5 0.5"
@@ -84,29 +78,90 @@
                 animation="property: position; to: 0 0.6 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
       </a-entity>
 
-      <!-- CARTEL CON CLAVE -->
       <a-plane position="0 2.2 0" width="2.6" height="0.8" color="#000000" material="opacity: 0.88; transparent: true">
-        <a-text value="¡HAS ENCONTRADO EL ESPECTRO!\nClave: AQUELARRE" 
+        <a-text value="¡REVELACIÓN DE LA PITONISA!\nClave: SANTOS" 
                 align="center" 
                 width="2.4" 
                 color="#ff6b00" 
                 position="0 0 0.02">
         </a-text>
       </a-plane>
+    </a-marker>
 
+
+    <!-- 2. TÚNEL: MARCADOR FALSO 1 - ESCUELA DE ROBÓTICA -->
+    <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1">
+      <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
+        <a-text value="🤖 KaMaDo Robotic's School\n\n¡SÍMBOLO FALSO!\nAquí solo hay robots. ¡Sigue buscando!" 
+                align="center" 
+                width="2.0" 
+                color="#3b82f6" 
+                position="0 0 0.02">
+        </a-text>
+      </a-plane>
+    </a-marker>
+
+
+    <!-- 3. TÚNEL: MARCADOR FALSO 2 - ALCALDE DE HUÉRCAL -->
+    <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2">
+      <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
+        <a-text value="🏛️ AYUNTAMIENTO DE HUÉRCAL\n\n¡Despacho del Alcalde!\nEste símbolo es falso. ¡Huye de la motosierra!" 
+                align="center" 
+                width="2.0" 
+                color="#eab308" 
+                position="0 0 0.02">
+        </a-text>
+      </a-plane>
+    </a-marker>
+
+
+    <!-- 4. TÚNEL: MARCADOR FALSO 3 - PÓSTER SINIESTRO -->
+    <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3">
+      <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
+        <a-text value="☠️ PÓSTER MALDITO\n\n¡Atrápame si puedes!\nMarca falsa. Corre por el túnel." 
+                align="center" 
+                width="2.0" 
+                color="#ef4444" 
+                position="0 0 0.02">
+        </a-text>
+      </a-plane>
+    </a-marker>
+
+
+    <!-- 5. TÚNEL: MARCADOR CORRECTO - CÓDIGO NUMÉRICO EN PARED -->
+    <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto">
+      <!-- Fondo negro holográfico ajustado de frente a la pared -->
+      <a-plane position="0 0 0.15" rotation="0 0 0" width="2.6" height="1.4" color="#0d0d0d" material="opacity: 0.95; transparent: true">
+        <a-text value="🔓 CÓDIGO DEL TÚNEL DETECTADO" 
+                align="center" 
+                width="2.2" 
+                color="#ff6b00" 
+                position="0 0.35 0.02">
+        </a-text>
+        <!-- Número en grande y limpio orientado hacia arriba -->
+        <a-text value="8492" 
+                align="center" 
+                width="6.0" 
+                color="#22c55e" 
+                position="0 -0.1 0.02">
+        </a-text>
+      </a-plane>
     </a-marker>
 
     <a-entity camera></a-entity>
   </a-scene>
 
 <script>
-  let hasSpoken = false;
+  let hasSpokenEscudo = false;
+  let hasSpokenTunel = false;
 
+  // EVENTO: ESCUDO PITONISA
   document.querySelector('#marker-escudo').addEventListener('markerFound', () => {
-    if (!hasSpoken) {
-      hasSpoken = true;
+    document.getElementById('ar-status').innerText = "✨ ¡Espectro Verdadero Detectado!";
+    if (!hasSpokenEscudo) {
+      hasSpokenEscudo = true;
       if ('speechSynthesis' in window) {
-        const mensaje = new SpeechSynthesisUtterance("Has encontrado al espectro de Huércal. Tu palabra clave es Aquelarre.");
+        const mensaje = new SpeechSynthesisUtterance("Has encontrado al espectro de Huércal. Tu palabra clave es Santos.");
         mensaje.lang = 'es-ES';
         mensaje.pitch = 0.4;
         mensaje.rate = 0.8;
@@ -114,9 +169,32 @@
       }
     }
   });
+  document.querySelector('#marker-escudo').addEventListener('markerLost', () => { hasSpokenEscudo = false; });
 
-  document.querySelector('#marker-escudo').addEventListener('markerLost', () => {
-    hasSpoken = false;
+  // EVENTO: TÚNEL CORRECTO
+  document.querySelector('#marker-tunel-correcto').addEventListener('markerFound', () => {
+    document.getElementById('ar-status').innerText = "✅ ¡Código del Túnel Encontrado!";
+    if (!hasSpokenTunel) {
+      hasSpokenTunel = true;
+      if ('speechSynthesis' in window) {
+        const mensaje = new SpeechSynthesisUtterance("¡Código correcto del túnel hallado! Tu clave numérica es 8 4 9 2.");
+        mensaje.lang = 'es-ES';
+        mensaje.pitch = 0.5;
+        mensaje.rate = 0.85;
+        window.speechSynthesis.speak(mensaje);
+      }
+    }
+  });
+  document.querySelector('#marker-tunel-correcto').addEventListener('markerLost', () => { hasSpokenTunel = false; });
+
+  // EVENTOS FALSOS
+  ['#marker-falso1', '#marker-falso2', '#marker-falso3'].forEach(id => {
+    const el = document.querySelector(id);
+    if (el) {
+      el.addEventListener('markerFound', () => {
+        document.getElementById('ar-status').innerText = "❌ Símbolo Falso. ¡Sigue buscando!";
+      });
+    }
   });
 </script>
 
