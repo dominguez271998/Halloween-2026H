@@ -303,7 +303,6 @@
   let currentUserLat = null;
   let currentUserLng = null;
 
-  // CONFIGURACIÓN DE LAS 4 PRUEBAS DEFINITIVAS
   const allStations = [
     { 
       id: 0, 
@@ -327,7 +326,7 @@
       id: 2, 
       title: "Estación 3: Calle Oscura (Paso Sombrío)", 
       name: "Calle Oscura", 
-      code: "371", // Prefijo fijo de los 3 números impresos escondidos en la calle
+      code: "371",
       lat: 36.882500, 
       lng: -2.438200,
       desc: "El actor te señalará la primera cifra. Encuentra las dos cifras ocultas en la calle con tu linterna y deduce el orden correcto. Al acertar, el actor te dirá la última cifra misteriosa según la hora exacta."
@@ -352,7 +351,8 @@
 
   const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
 
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+  // SE AMPLÍA EL TIMEOUT A 18 SEGUNDOS PARA EL ARRANQUE DE GOOGLE APPS SCRIPT
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 18000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -539,12 +539,12 @@
 
     try {
       const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&participantCount=${membersInput}&assignedStation=${encodeURIComponent(initialProgressText)}`;
-      const response = await fetchWithTimeout(requestUrl, {}, 8000);
+      const response = await fetchWithTimeout(requestUrl, {}, 18000);
       const textResponse = await response.text();
       let data = JSON.parse(textResponse);
 
       if (data.status === "DUPLICATE") {
-        errorDiv.innerText = "¡Ese nombre de equipo ya existe! Elige uno diferente.";
+        errorDiv.innerText = "¡Ese nombre de equipo ya existe! Prueba a añadir un número o cambiar el nombre.";
         errorDiv.classList.remove('hidden');
         btn.disabled = false;
         btn.innerText = "REGISTRAR EQUIPO";
@@ -567,7 +567,7 @@
       }
 
     } catch (err) {
-      errorDiv.innerText = "Error de red o conexión lenta. Comprueba tus datos e inténtalo de nuevo.";
+      errorDiv.innerText = "Error de conexión con el servidor. Revisa tu conexión e inténtalo con otro nombre de equipo.";
       errorDiv.classList.remove('hidden');
       btn.disabled = false;
       btn.innerText = "REGISTRAR EQUIPO";
@@ -576,12 +576,12 @@
 
   function startApprovalPolling() {
     if (statusPollInterval) clearInterval(statusPollInterval);
-    statusPollInterval = setInterval(checkStartApproval, 2000);
+    statusPollInterval = setInterval(checkStartApproval, 2500);
   }
 
   async function checkStartApproval() {
     try {
-      const response = await fetchWithTimeout(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`, {}, 5000);
+      const response = await fetchWithTimeout(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`, {}, 6000);
       const data = await response.json();
 
       if (data.status === "En curso") {
@@ -599,7 +599,7 @@
         startTimer();
       }
     } catch (err) {
-      // Ignorar fallos de red esporádicos
+      // Ignorar fallos temporales de red durante la espera
     }
   }
 
@@ -651,25 +651,23 @@
 
     let isCorrect = false;
 
-    // VALIDACIÓN DINÁMICA DE LA ESTACIÓN 3 (CALLE OSCURA)
     if (target.id === 2) { 
       const fixedPrefix = target.code; // "371"
 
       const now = new Date();
       const currentMinutes = now.getMinutes();
-      const currentMinDigit = currentMinutes % 10; // ej: 21 min -> 1
+      const currentMinDigit = currentMinutes % 10;
 
-      const prevMinutes = (currentMinutes - 1 + 60) % 60; // ej: 20 min -> 0
+      const prevMinutes = (currentMinutes - 1 + 60) % 60;
       const prevMinDigit = prevMinutes % 10;
 
-      const expectedCodeCurrent = fixedPrefix + currentMinDigit; // ej: 3711
-      const expectedCodePrev = fixedPrefix + prevMinDigit;       // ej: 3710
+      const expectedCodeCurrent = fixedPrefix + currentMinDigit;
+      const expectedCodePrev = fixedPrefix + prevMinDigit;
 
       if (input === expectedCodeCurrent || input === expectedCodePrev) {
         isCorrect = true;
       }
     } else {
-      // Para las demás estaciones con clave fija
       if (input === target.code) {
         isCorrect = true;
       }
