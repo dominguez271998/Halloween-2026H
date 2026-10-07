@@ -5,48 +5,79 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Escáner RA - La Sombra de Huércal</title>
 
-  <!-- A-Frame VR Framework 1.2.0 -->
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <!-- AR.js para A-Frame -->
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <!-- A-Frame VR Framework 1.3.0 -->
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <!-- AR.js para A-Frame (Versión oficial estable) -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <!-- Extras para animaciones GLTF -->
   <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     html, body {
-      margin: 0;
-      padding: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: transparent !important;
       font-family: system-ui, -apple-system, sans-serif;
+      background: #000;
     }
 
-    /* Estilos para forzar la visualización del video de la cámara detrás del 3D */
-    video {
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
-      z-index: 1 !important;
+    /* PANTALLA DE INICIO DE CÁMARA (RESUELVE BLOQUEOS DE SEGURIDAD EN SAFARI Y CHROME) */
+    #start-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(13, 13, 13, 0.95);
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 25px;
+      text-align: center;
+      color: #fff;
     }
 
-    .a-canvas {
-      position: absolute !important;
-      top: 0 !important;
-      left: 0 !important;
-      z-index: 2 !important;
+    .start-title {
+      color: #ff6b00;
+      font-size: 1.6rem;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
-    .ar-overlay {
+    .start-desc {
+      color: #ccc;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 30px;
+      max-width: 340px;
+    }
+
+    .btn-start-camera {
+      background: #ff6b00;
+      color: #000;
+      border: none;
+      padding: 16px 32px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 0 4px 15px rgba(255, 107, 0, 0.5);
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .btn-start-camera:active {
+      transform: scale(0.95);
+    }
+
+    .ar-status-bar {
       position: fixed;
       top: 15px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(13, 13, 13, 0.9);
+      background: rgba(13, 13, 13, 0.88);
       color: #ff6b00;
       padding: 10px 20px;
       border-radius: 20px;
@@ -54,13 +85,13 @@
       font-weight: bold;
       z-index: 9999;
       text-align: center;
-      font-size: 0.9rem;
-      width: 85%;
+      font-size: 0.85rem;
+      width: 88%;
       max-width: 380px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.8);
     }
 
-    .btn-close {
+    .btn-back-game {
       position: fixed;
       bottom: 25px;
       left: 50%;
@@ -70,7 +101,7 @@
       border: none;
       padding: 12px 28px;
       font-weight: bold;
-      font-size: 1rem;
+      font-size: 0.95rem;
       border-radius: 8px;
       cursor: pointer;
       z-index: 9999;
@@ -78,65 +109,43 @@
       box-shadow: 0 4px 10px rgba(255, 107, 0, 0.5);
     }
 
-    .inapp-warning {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: #111;
-      color: #fff;
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 25px;
-      text-align: center;
+    a-scene {
+      width: 100vw;
+      height: 100vh;
     }
   </style>
 </head>
 <body>
 
-  <div id="inapp-alert" class="inapp-warning hidden">
-    <h2 style="color: #ff6b00; margin-bottom: 15px;">⚠️ Abre en tu Navegador</h2>
-    <p style="line-height: 1.5; margin-bottom: 20px;">
-      El navegador interno de WhatsApp/Instagram no permite usar la cámara de Realidad Aumentada.
-    </p>
-    <p style="color: #aaa; font-size: 0.9rem;">
-      Pulsa en el menú de arriba a la derecha (•••) y selecciona <strong>"Abrir en Chrome"</strong> o <strong>"Abrir en Safari"</strong>.
-    </p>
-    <button class="btn-close" style="position: relative; bottom: auto; margin-top: 25px;" onclick="window.history.back()">Volver</button>
+  <!-- PANTALLA DE INICIO QUE ACTIVA LA CÁMARA POR INTERACCIÓN DIRECTA -->
+  <div id="start-overlay">
+    <div class="start-title">👁️ Escáner de la Sombra</div>
+    <div class="start-desc">
+      Para poder escanear los símbolos en las paredes del túnel y la bola de cristal de la Pitonisa, activa la cámara de tu teléfono.
+    </div>
+    <button class="btn-start-camera" onclick="initARCamera()">📷 Iniciar Cámara</button>
   </div>
 
-  <div class="ar-overlay" id="ar-status">
-    👁️ Busca y escanea los símbolos de la Sombra
+  <div class="ar-status-bar" id="ar-status">
+    👁️ Enfoca un marcador para escanear
   </div>
 
-  <button class="btn-close" onclick="window.history.back()">Volver al Juego</button>
+  <button class="btn-back-game" onclick="window.history.back()">Volver al Juego</button>
 
+  <!-- ESCENA A-FRAME CON CONFIGURACIÓN AR.JS LIMPIA -->
   <a-scene embedded 
-           arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;" 
-           vr-mode-ui="enabled: false"
-           renderer="alpha: true; antialias: true; colorManagement: true; logarithmicDepthBuffer: true;">
-    
-    <a-assets timeout="3000">
-      <a-asset-item id="modelo-fantasma" src="fantasma.glb"></a-asset-item>
-    </a-assets>
+           arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;"
+           vr-mode-ui="enabled: false">
 
-    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO -->
+    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (MARCADOR CORRECTO) -->
     <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
       <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
       <a-light type="directional" color="#ff6b00" intensity="1.5" position="0 2 1"></a-light>
 
-      <a-entity gltf-model="#modelo-fantasma"
-                position="0 0.2 0"
-                scale="0.5 0.5 0.5"
-                animation-mixer
-                animation="property: position; to: 0 0.6 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
-      </a-entity>
+      <a-sphere position="0 0.5 0" radius="0.35" color="#ff6b00" material="opacity: 0.85; transparent: true"
+                animation="property: scale; to: 1.25 1.25 1.25; dir: alternate; loop: true; dur: 1000;"></a-sphere>
 
-      <a-sphere position="0 0.5 0" radius="0.35" color="#ff6b00" material="opacity: 0.8; transparent: true"
-                animation="property: scale; to: 1.2 1.2 1.2; dir: alternate; loop: true; dur: 1000;"></a-sphere>
-
-      <a-plane position="0 2.0 0" width="2.6" height="0.8" color="#000000" material="opacity: 0.88; transparent: true">
+      <a-plane position="0 1.9 0" width="2.6" height="0.8" color="#000000" material="opacity: 0.9; transparent: true">
         <a-text value="¡REVELACIÓN DE LA PITONISA!\nClave: SANTOS" 
                 align="center" 
                 width="2.4" 
@@ -146,7 +155,7 @@
       </a-plane>
     </a-marker>
 
-    <!-- 2. TÚNEL: FALSO 1 -->
+    <!-- 2. TÚNEL: MARCADOR FALSO 1 - ROBÓTICA -->
     <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1">
       <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
         <a-text value="🤖 KaMaDo Robotic's School\n\n¡SÍMBOLO FALSO!\nAquí solo hay robots. ¡Sigue buscando!" 
@@ -158,7 +167,7 @@
       </a-plane>
     </a-marker>
 
-    <!-- 3. TÚNEL: FALSO 2 -->
+    <!-- 3. TÚNEL: MARCADOR FALSO 2 - ALCALDE -->
     <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2">
       <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
         <a-text value="🏛️ AYUNTAMIENTO DE HUÉRCAL\n\n¡Despacho del Alcalde!\nEste símbolo es falso. ¡Huye de la motosierra!" 
@@ -170,7 +179,7 @@
       </a-plane>
     </a-marker>
 
-    <!-- 4. TÚNEL: FALSO 3 -->
+    <!-- 4. TÚNEL: MARCADOR FALSO 3 - PÓSTER -->
     <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3">
       <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
         <a-text value="☠️ PÓSTER MALDITO\n\n¡Atrápame si puedes!\nMarca falsa. Corre por el túnel." 
@@ -182,7 +191,7 @@
       </a-plane>
     </a-marker>
 
-    <!-- 5. TÚNEL: CORRECTO -->
+    <!-- 5. TÚNEL: MARCADOR CORRECTO - CÓDIGO NUMÉRICO -->
     <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto">
       <a-plane position="0 0 0.15" rotation="0 0 0" width="2.6" height="1.4" color="#0d0d0d" material="opacity: 0.95; transparent: true">
         <a-text value="🔓 CÓDIGO DEL TÚNEL DETECTADO" 
@@ -204,60 +213,88 @@
   </a-scene>
 
 <script>
-  // Detección de WebView/InApp Browser (WhatsApp, Instagram)
-  const ua = navigator.userAgent || navigator.vendor || window.opera;
-  const isInApp = (ua.indexOf("Instagram") > -1) || (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("WhatsApp") > -1);
-  
-  if (isInApp) {
-    document.getElementById('inapp-alert').classList.remove('hidden');
+  async function initARCamera() {
+    const overlay = document.getElementById('start-overlay');
+    const status = document.getElementById('ar-status');
+
+    try {
+      status.innerText = "⏳ Solicitando acceso a la cámara...";
+      
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" } },
+          audio: false
+        });
+      } catch (e1) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+      }
+
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      overlay.style.display = 'none';
+      status.innerText = "👁️ Busca y escanea los símbolos de la Sombra";
+
+    } catch (err) {
+      console.error("Error al acceder a la cámara:", err);
+      status.innerText = "❌ No se pudo encender la cámara.";
+      alert("No se pudo acceder a la cámara. Revisa los permisos del navegador en tu móvil o abre el enlace directamente en Safari/Chrome.");
+    }
   }
 
   let hasSpokenEscudo = false;
   let hasSpokenTunel = false;
 
-  const markerEscudo = document.querySelector('#marker-escudo');
-  if (markerEscudo) {
-    markerEscudo.addEventListener('markerFound', () => {
-      document.getElementById('ar-status').innerText = "✨ ¡Espectro Verdadero Detectado!";
-      if (!hasSpokenEscudo) {
-        hasSpokenEscudo = true;
-        if ('speechSynthesis' in window) {
-          const mensaje = new SpeechSynthesisUtterance("Has encontrado al espectro de Huércal. Tu palabra clave es Santos.");
-          mensaje.lang = 'es-ES';
-          mensaje.pitch = 0.4;
-          mensaje.rate = 0.8;
-          window.speechSynthesis.speak(mensaje);
+  window.addEventListener('DOMContentLoaded', () => {
+    const markerEscudo = document.querySelector('#marker-escudo');
+    if (markerEscudo) {
+      markerEscudo.addEventListener('markerFound', () => {
+        document.getElementById('ar-status').innerText = "✨ ¡Espectro Verdadero Detectado!";
+        if (!hasSpokenEscudo) {
+          hasSpokenEscudo = true;
+          if ('speechSynthesis' in window) {
+            const mensaje = new SpeechSynthesisUtterance("Has encontrado al espectro de Huércal. Tu palabra clave es Santos.");
+            mensaje.lang = 'es-ES';
+            mensaje.pitch = 0.4;
+            mensaje.rate = 0.8;
+            window.speechSynthesis.speak(mensaje);
+          }
         }
-      }
-    });
-    markerEscudo.addEventListener('markerLost', () => { hasSpokenEscudo = false; });
-  }
-
-  const markerTunel = document.querySelector('#marker-tunel-correcto');
-  if (markerTunel) {
-    markerTunel.addEventListener('markerFound', () => {
-      document.getElementById('ar-status').innerText = "✅ ¡Código del Túnel Encontrado!";
-      if (!hasSpokenTunel) {
-        hasSpokenTunel = true;
-        if ('speechSynthesis' in window) {
-          const mensaje = new SpeechSynthesisUtterance("¡Código correcto del túnel hallado! Tu clave numérica es 8 4 9 2.");
-          mensaje.lang = 'es-ES';
-          mensaje.pitch = 0.5;
-          mensaje.rate = 0.85;
-          window.speechSynthesis.speak(mensaje);
-        }
-      }
-    });
-    markerTunel.addEventListener('markerLost', () => { hasSpokenTunel = false; });
-  }
-
-  ['#marker-falso1', '#marker-falso2', '#marker-falso3'].forEach(id => {
-    const el = document.querySelector(id);
-    if (el) {
-      el.addEventListener('markerFound', () => {
-        document.getElementById('ar-status').innerText = "❌ Símbolo Falso. ¡Sigue buscando!";
       });
+      markerEscudo.addEventListener('markerLost', () => { hasSpokenEscudo = false; });
     }
+
+    const markerTunel = document.querySelector('#marker-tunel-correcto');
+    if (markerTunel) {
+      markerTunel.addEventListener('markerFound', () => {
+        document.getElementById('ar-status').innerText = "✅ ¡Código del Túnel Encontrado!";
+        if (!hasSpokenTunel) {
+          hasSpokenTunel = true;
+          if ('speechSynthesis' in window) {
+            const mensaje = new SpeechSynthesisUtterance("¡Código correcto del túnel hallado! Tu clave numérica es 8 4 9 2.");
+            mensaje.lang = 'es-ES';
+            mensaje.pitch = 0.5;
+            mensaje.rate = 0.85;
+            window.speechSynthesis.speak(mensaje);
+          }
+        }
+      });
+      markerTunel.addEventListener('markerLost', () => { hasSpokenTunel = false; });
+    }
+
+    ['#marker-falso1', '#marker-falso2', '#marker-falso3'].forEach(id => {
+      const el = document.querySelector(id);
+      if (el) {
+        el.addEventListener('markerFound', () => {
+          document.getElementById('ar-status').innerText = "❌ Símbolo Falso. ¡Sigue buscando!";
+        });
+      }
+    });
   });
 </script>
 
