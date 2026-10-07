@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Escáner RA - La Sombra de Huércal</title>
 
-  <!-- A-Frame VR Framework 1.2.0 (Máxima estabilidad WebAR) -->
+  <!-- A-Frame VR Framework 1.2.0 -->
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <!-- AR.js para A-Frame -->
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
@@ -19,8 +19,26 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #000;
+      background-color: transparent !important;
       font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    /* Estilos para forzar la visualización del video de la cámara detrás del 3D */
+    video {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      z-index: 1 !important;
+    }
+
+    .a-canvas {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      z-index: 2 !important;
     }
 
     .ar-overlay {
@@ -59,9 +77,34 @@
       text-transform: uppercase;
       box-shadow: 0 4px 10px rgba(255, 107, 0, 0.5);
     }
+
+    .inapp-warning {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #111;
+      color: #fff;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 25px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
+
+  <div id="inapp-alert" class="inapp-warning hidden">
+    <h2 style="color: #ff6b00; margin-bottom: 15px;">⚠️ Abre en tu Navegador</h2>
+    <p style="line-height: 1.5; margin-bottom: 20px;">
+      El navegador interno de WhatsApp/Instagram no permite usar la cámara de Realidad Aumentada.
+    </p>
+    <p style="color: #aaa; font-size: 0.9rem;">
+      Pulsa en el menú de arriba a la derecha (•••) y selecciona <strong>"Abrir en Chrome"</strong> o <strong>"Abrir en Safari"</strong>.
+    </p>
+    <button class="btn-close" style="position: relative; bottom: auto; margin-top: 25px;" onclick="window.history.back()">Volver</button>
+  </div>
 
   <div class="ar-overlay" id="ar-status">
     👁️ Busca y escanea los símbolos de la Sombra
@@ -72,19 +115,17 @@
   <a-scene embedded 
            arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;" 
            vr-mode-ui="enabled: false"
-           renderer="logarithmicDepthBuffer: true; colorManagement: true;">
+           renderer="alpha: true; antialias: true; colorManagement: true; logarithmicDepthBuffer: true;">
     
-    <!-- TIMEOUT DE 3 SEGUNDOS: Si falta fantasma.glb la app arranca igual -->
     <a-assets timeout="3000">
       <a-asset-item id="modelo-fantasma" src="fantasma.glb"></a-asset-item>
     </a-assets>
 
-    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (CORRECTO) -->
+    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO -->
     <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
       <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
       <a-light type="directional" color="#ff6b00" intensity="1.5" position="0 2 1"></a-light>
 
-      <!-- MODELO 3D (O FANTASMA O RESPALDO) -->
       <a-entity gltf-model="#modelo-fantasma"
                 position="0 0.2 0"
                 scale="0.5 0.5 0.5"
@@ -92,7 +133,6 @@
                 animation="property: position; to: 0 0.6 0; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine">
       </a-entity>
 
-      <!-- ORBE DE RESPALDO SI NO EXISTE FANTASMA.GLB -->
       <a-sphere position="0 0.5 0" radius="0.35" color="#ff6b00" material="opacity: 0.8; transparent: true"
                 animation="property: scale; to: 1.2 1.2 1.2; dir: alternate; loop: true; dur: 1000;"></a-sphere>
 
@@ -106,8 +146,7 @@
       </a-plane>
     </a-marker>
 
-
-    <!-- 2. TÚNEL: MARCADOR FALSO 1 - ESCUELA DE ROBÓTICA -->
+    <!-- 2. TÚNEL: FALSO 1 -->
     <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1">
       <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
         <a-text value="🤖 KaMaDo Robotic's School\n\n¡SÍMBOLO FALSO!\nAquí solo hay robots. ¡Sigue buscando!" 
@@ -119,8 +158,7 @@
       </a-plane>
     </a-marker>
 
-
-    <!-- 3. TÚNEL: MARCADOR FALSO 2 - ALCALDE DE HUÉRCAL -->
+    <!-- 3. TÚNEL: FALSO 2 -->
     <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2">
       <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
         <a-text value="🏛️ AYUNTAMIENTO DE HUÉRCAL\n\n¡Despacho del Alcalde!\nEste símbolo es falso. ¡Huye de la motosierra!" 
@@ -132,8 +170,7 @@
       </a-plane>
     </a-marker>
 
-
-    <!-- 4. TÚNEL: MARCADOR FALSO 3 - PÓSTER SINIESTRO -->
+    <!-- 4. TÚNEL: FALSO 3 -->
     <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3">
       <a-plane position="0 0 0.1" rotation="0 0 0" width="2.2" height="1.2" color="#000000" material="opacity: 0.92; transparent: true">
         <a-text value="☠️ PÓSTER MALDITO\n\n¡Atrápame si puedes!\nMarca falsa. Corre por el túnel." 
@@ -145,8 +182,7 @@
       </a-plane>
     </a-marker>
 
-
-    <!-- 5. TÚNEL: MARCADOR CORRECTO - CÓDIGO NUMÉRICO EN PARED -->
+    <!-- 5. TÚNEL: CORRECTO -->
     <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto">
       <a-plane position="0 0 0.15" rotation="0 0 0" width="2.6" height="1.4" color="#0d0d0d" material="opacity: 0.95; transparent: true">
         <a-text value="🔓 CÓDIGO DEL TÚNEL DETECTADO" 
@@ -168,10 +204,17 @@
   </a-scene>
 
 <script>
+  // Detección de WebView/InApp Browser (WhatsApp, Instagram)
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  const isInApp = (ua.indexOf("Instagram") > -1) || (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("WhatsApp") > -1);
+  
+  if (isInApp) {
+    document.getElementById('inapp-alert').classList.remove('hidden');
+  }
+
   let hasSpokenEscudo = false;
   let hasSpokenTunel = false;
 
-  // EVENTO: ESCUDO PITONISA
   const markerEscudo = document.querySelector('#marker-escudo');
   if (markerEscudo) {
     markerEscudo.addEventListener('markerFound', () => {
@@ -190,7 +233,6 @@
     markerEscudo.addEventListener('markerLost', () => { hasSpokenEscudo = false; });
   }
 
-  // EVENTO: TÚNEL CORRECTO
   const markerTunel = document.querySelector('#marker-tunel-correcto');
   if (markerTunel) {
     markerTunel.addEventListener('markerFound', () => {
@@ -209,7 +251,6 @@
     markerTunel.addEventListener('markerLost', () => { hasSpokenTunel = false; });
   }
 
-  // EVENTOS FALSOS
   ['#marker-falso1', '#marker-falso2', '#marker-falso3'].forEach(id => {
     const el = document.querySelector(id);
     if (el) {
