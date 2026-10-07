@@ -240,9 +240,7 @@
       <p id="assigned-station" style="font-size: 1.1rem; margin-top: 5px; color: #fff;"></p>
     </div>
 
-    <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;">
-      Dirígete a esta ubicación y busca la prueba o el actor. Resuelve el enigma para obtener la palabra clave.
-    </p>
+    <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;"></p>
 
     <label for="station-code" id="label-code">Palabra Clave de la Estación:</label>
     <input type="text" id="station-code" placeholder="Introduce la palabra clave..." autocomplete="off">
@@ -305,12 +303,44 @@
   let currentUserLat = null;
   let currentUserLng = null;
 
-  // UBICACIONES REALES DE HUÉRCAL DE ALMERÍA
+  // CONFIGURACIÓN DE LAS 4 PRUEBAS DEFINITIVAS
   const allStations = [
-    { id: 0, title: "Estación 1: Centro Social 'José Guirado'", name: "Centro Social José Guirado", code: "AQUELARRE", lat: 36.8861492, lng: -2.4364976 },
-    { id: 1, title: "Estación 2: Parque de las Familias 'Loquilandia'", name: "Parque Loquilandia", code: "NIGHT2026", lat: 36.8895202, lng: -2.4481997 },
-    { id: 2, title: "Estación 3: Punto de Control (Paseo del Carmen)", name: "Ubicación 3", code: "HURCAL", lat: 36.875937, lng: -2.440873 },
-    { id: 3, title: "Estación 4: Centro Cultural 'Cortijo Moreno'", name: "Cortijo Moreno", code: "SANTOS", lat: 36.8836232, lng: -2.4376785 }
+    { 
+      id: 0, 
+      title: "Estación 1: Centro Social 'José Guirado'", 
+      name: "Centro Social José Guirado", 
+      code: "AQUELARRE", 
+      lat: 36.8861492, 
+      lng: -2.4364976,
+      desc: "Entra en el edificio en penumbra. Escucha atentamente la psicofonía que resuena en el ambiente para descubrir la clave."
+    },
+    { 
+      id: 1, 
+      title: "Estación 2: Túnel de las Vías del Tren", 
+      name: "Túnel Vías del Tren", 
+      code: "8492", 
+      lat: 36.884500, 
+      lng: -2.439200,
+      desc: "Cruza el túnel con cuidado. Usa el botón 'Escanear RA' para revisar los símbolos de las paredes. ¡Huye de la motosierra y encuentra el código numérico verdadero!"
+    },
+    { 
+      id: 2, 
+      title: "Estación 3: Calle Oscura (Paso Sombrío)", 
+      name: "Calle Oscura", 
+      code: "371", // Prefijo fijo de los 3 números impresos escondidos en la calle
+      lat: 36.882500, 
+      lng: -2.438200,
+      desc: "El actor te señalará la primera cifra. Encuentra las dos cifras ocultas en la calle con tu linterna y deduce el orden correcto. Al acertar, el actor te dirá la última cifra misteriosa según la hora exacta."
+    },
+    { 
+      id: 3, 
+      title: "Estación 4: Centro Cultural 'Cortijo Moreno'", 
+      name: "Cortijo Moreno", 
+      code: "SANTOS", 
+      lat: 36.8836232, 
+      lng: -2.4376785,
+      desc: "Visita a la Pitonisa y consulta su bola de cristal. Escanea el escudo con la cámara RA para invocar al espectro que revelará la clave."
+    }
   ];
 
   const baseStation = {
@@ -569,7 +599,7 @@
         startTimer();
       }
     } catch (err) {
-      // Ignorar fallos de red esporádicos en polling
+      // Ignorar fallos de red esporádicos
     }
   }
 
@@ -588,13 +618,13 @@
     if (currentStepIndex < 4) {
       document.getElementById('progress-indicator').innerText = `Estación ${currentStepIndex + 1} de 4`;
       document.getElementById('assigned-station').innerText = target.title;
-      document.getElementById('station-instructions').innerText = "Dirígete a esta ubicación y busca la prueba o el actor. Resuelve el enigma para obtener la palabra clave.";
+      document.getElementById('station-instructions').innerText = target.desc;
       document.getElementById('label-code').innerText = "Palabra Clave de la Estación:";
     } else {
       document.getElementById('progress-indicator').innerText = "🏁 FASE FINAL";
       document.getElementById('progress-indicator').style.color = "var(--success)";
       document.getElementById('assigned-station').innerText = target.title;
-      document.getElementById('station-instructions').innerText = "¡Has completado las 4 estaciones! Regresa de inmediato al Punto de Inicio con la Organización para sellar tu victoria.";
+      document.getElementById('station-instructions').innerText = "¡Has completado las 4 estaciones! Regresa de inmediato al Cortijo Moreno con la Organización para sellar tu victoria.";
       document.getElementById('label-code').innerText = "Código Final de la Organización:";
     }
 
@@ -619,7 +649,33 @@
     const status = document.getElementById('game-status');
     const target = getCurrentTarget();
 
-    if (input === target.code) {
+    let isCorrect = false;
+
+    // VALIDACIÓN DINÁMICA DE LA ESTACIÓN 3 (CALLE OSCURA)
+    if (target.id === 2) { 
+      const fixedPrefix = target.code; // "371"
+
+      const now = new Date();
+      const currentMinutes = now.getMinutes();
+      const currentMinDigit = currentMinutes % 10; // ej: 21 min -> 1
+
+      const prevMinutes = (currentMinutes - 1 + 60) % 60; // ej: 20 min -> 0
+      const prevMinDigit = prevMinutes % 10;
+
+      const expectedCodeCurrent = fixedPrefix + currentMinDigit; // ej: 3711
+      const expectedCodePrev = fixedPrefix + prevMinDigit;       // ej: 3710
+
+      if (input === expectedCodeCurrent || input === expectedCodePrev) {
+        isCorrect = true;
+      }
+    } else {
+      // Para las demás estaciones con clave fija
+      if (input === target.code) {
+        isCorrect = true;
+      }
+    }
+
+    if (isCorrect) {
       status.className = "status-msg success";
       status.innerText = "¡Código Correcto!";
       inputField.value = "";
@@ -679,8 +735,7 @@
   }
 
   function initMap() {
-    // Centrado general en Huércal de Almería
-    leafletMap = L.map('map').setView([36.884, -2.442], 15);
+    leafletMap = L.map('map').setView([36.884, -2.438], 16);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
