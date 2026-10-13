@@ -101,59 +101,85 @@
       border: 1px solid #444;
       margin: 15px 0;
     }
+
+    input.pin-input {
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #555;
+      background: #222;
+      color: #fff;
+      font-size: 1.2rem;
+      text-align: center;
+      margin: 15px 0;
+      width: 100%;
+      max-width: 200px;
+    }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <div>
-      <h1>Centro de Control - Escape Room</h1>
-      <div id="last-update" style="color: #888; font-size: 0.85rem; margin-top: 4px;">Actualizando...</div>
-    </div>
-    
-    <button id="btn-approve-all-main" class="btn-approve-all" onclick="approveAllTeams()">🚀 Dar Salida a Todos</button>
-  </div>
-
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div>Equipos Totales</div>
-      <div id="stat-total" class="stat-value">0</div>
-    </div>
-    <div class="stat-card">
-      <div>Participantes Totales</div>
-      <div id="stat-members" class="stat-value" style="color: #3b82f6;">0</div>
-    </div>
-    <div class="stat-card">
-      <div>Pendientes Salida</div>
-      <div id="stat-pending" class="stat-value" style="color: var(--warning);">0</div>
-    </div>
-    <div class="stat-card">
-      <div>En Juego</div>
-      <div id="stat-active" class="stat-value" style="color: #60a5fa;">0</div>
-    </div>
-    <div class="stat-card">
-      <div>Finalizados</div>
-      <div id="stat-done" class="stat-value" style="color: var(--success);">0</div>
+  <!-- MODAL DE AUTENTICACIÓN CON PIN PARA LA ORGANIZACIÓN -->
+  <div id="pin-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h2 style="color: var(--accent);">🔐 Acceso Organización</h2>
+      <p style="margin-top: 10px; font-size: 0.9rem; color: #ccc;">Introduce el PIN para gestionar el evento:</p>
+      <input type="password" id="admin-pin" class="pin-input" maxlength="8" placeholder="PIN" autocomplete="off">
+      <div id="pin-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 10px;" class="hidden">PIN Incorrecto</div>
+      <button class="btn-approve-all" style="width: 100%;" onclick="checkPin()">Acceder</button>
     </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Equipo</th>
-        <th>Participantes</th>
-        <th>Estado</th>
-        <th>Progreso / Estación</th>
-        <th>Hora Salida</th>
-        <th>Hora Llegada</th>
-        <th>Tiempo Total</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody id="table-body">
-      <tr><td colspan="8" style="text-align:center;">Cargando datos del servidor...</td></tr>
-    </tbody>
-  </table>
+  <div id="panel-content" class="hidden">
+    <div class="header">
+      <div>
+        <h1>Centro de Control - Escape Room</h1>
+        <div id="last-update" style="color: #888; font-size: 0.85rem; margin-top: 4px;">Actualizando...</div>
+      </div>
+      
+      <button id="btn-approve-all-main" class="btn-approve-all" onclick="approveAllTeams()">🚀 Dar Salida a Todos</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div>Equipos Totales</div>
+        <div id="stat-total" class="stat-value">0</div>
+      </div>
+      <div class="stat-card">
+        <div>Participantes Totales</div>
+        <div id="stat-members" class="stat-value" style="color: #3b82f6;">0</div>
+      </div>
+      <div class="stat-card">
+        <div>Pendientes Salida</div>
+        <div id="stat-pending" class="stat-value" style="color: var(--warning);">0</div>
+      </div>
+      <div class="stat-card">
+        <div>En Juego</div>
+        <div id="stat-active" class="stat-value" style="color: #60a5fa;">0</div>
+      </div>
+      <div class="stat-card">
+        <div>Finalizados</div>
+        <div id="stat-done" class="stat-value" style="color: var(--success);">0</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Equipo</th>
+          <th>Participantes</th>
+          <th>Estado</th>
+          <th>Progreso / Estación</th>
+          <th>Hora Salida</th>
+          <th>Hora Llegada</th>
+          <th>Tiempo Total</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="8" style="text-align:center;">Cargando datos del servidor...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <div id="modal-panel-map" class="modal-overlay hidden">
     <div class="modal-content">
@@ -169,12 +195,12 @@
 
 <script>
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
+  const ADMIN_PIN = "2026"; // PIN por defecto para la Organización
 
   let panelMap = null;
   let panelMapMarker = null;
   let currentTrackedTeam = null;
 
-  // ESTACIONES Y PRUEBAS EN PANEL
   const allStations = [
     { title: "🏁 Base: Cortijo Moreno", desc: "Punto de Inicio y Salida", lat: 36.8836232, lng: -2.4376785 },
     { title: "Estación 1: Centro Social 'José Guirado'", desc: "Prueba: Psicofonía en la oscuridad", lat: 36.8861492, lng: -2.4364976 },
@@ -182,6 +208,24 @@
     { title: "Estación 3: Calle Oscura", desc: "Prueba: Búsqueda de números + Orden con el actor", lat: 36.882500, lng: -2.438200 },
     { title: "Estación 4: Cortijo Moreno", desc: "Prueba: La Pitonisa y Fantasma RA", lat: 36.8836232, lng: -2.4376785 }
   ];
+
+  function checkPin() {
+    const entered = document.getElementById('admin-pin').value.trim();
+    if (entered === ADMIN_PIN) {
+      document.getElementById('pin-modal').classList.add('hidden');
+      document.getElementById('panel-content').classList.remove('hidden');
+      loadDashboard();
+      setInterval(loadDashboard, 4000);
+    } else {
+      document.getElementById('pin-error').classList.remove('hidden');
+    }
+  }
+
+  // FIJA EL CRASH CON NOMBRES NUMÉRICOS (EJ: "2026")
+  function escapeHtml(text) {
+    const str = String(text || '');
+    return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+  }
 
   function formatTime(val) {
     if (!val) return '-';
@@ -228,10 +272,11 @@
         const teamMembers = parseInt(item.participantCount, 10) || 2;
         totalParticipants += teamMembers;
 
+        const teamNameSafe = escapeHtml(item.team);
         let actions = [];
 
         if (item.status === "Pendiente") {
-          actions.push(`<button class="btn-action btn-approve" onclick="approveStart('${escapeHtml(item.team)}', this)">🟢 Salida</button>`);
+          actions.push(`<button class="btn-action btn-approve" data-team="${teamNameSafe}">🟢 Salida</button>`);
         }
 
         const latClean = cleanCoordinate(item.lat, true);
@@ -239,9 +284,9 @@
 
         if (item.status !== "Finalizado") {
           if (latClean !== null && lngClean !== null) {
-            actions.push(`<button class="btn-action btn-loc" onclick="showTeamLocation('${escapeHtml(item.team)}', '${latClean}', '${lngClean}')">📍 Ubicación</button>`);
+            actions.push(`<button class="btn-action btn-loc" data-team="${teamNameSafe}" data-lat="${latClean}" data-lng="${lngClean}">📍 Ubicación</button>`);
           } else {
-            actions.push(`<button class="btn-action btn-loc-no" onclick="showNoLocation('${escapeHtml(item.team)}')">📍 Sin GPS</button>`);
+            actions.push(`<button class="btn-action btn-loc-no" data-team="${teamNameSafe}">📍 Sin GPS</button>`);
           }
         }
 
@@ -258,7 +303,7 @@
 
         return `
           <tr>
-            <td><strong>${escapeHtml(item.team)}</strong></td>
+            <td><strong>${teamNameSafe}</strong></td>
             <td><strong>👥 ${teamMembers}</strong></td>
             <td><span class="badge ${badgeClass}">${item.status}</span></td>
             <td>${escapeHtml(item.station || '-')}</td>
@@ -270,6 +315,9 @@
         `;
       }).join('');
 
+      // REENGANCHE DE EVENTOS SEGUROS SIN INYECCIÓN ONCLICK EN CADENA
+      attachTableEventListeners();
+
       document.getElementById('stat-total').innerText = data.length;
       document.getElementById('stat-members').innerText = totalParticipants;
       document.getElementById('stat-pending').innerText = pendingCount;
@@ -280,6 +328,22 @@
     } catch (err) {
       console.error("Error al actualizar panel:", err);
     }
+  }
+
+  function attachTableEventListeners() {
+    document.querySelectorAll('.btn-approve').forEach(btn => {
+      btn.onclick = function() { approveStart(this.getAttribute('data-team'), this); };
+    });
+
+    document.querySelectorAll('.btn-loc').forEach(btn => {
+      btn.onclick = function() { 
+        showTeamLocation(this.getAttribute('data-team'), this.getAttribute('data-lat'), this.getAttribute('data-lng')); 
+      };
+    });
+
+    document.querySelectorAll('.btn-loc-no').forEach(btn => {
+      btn.onclick = function() { showNoLocation(this.getAttribute('data-team')); };
+    });
   }
 
   async function approveStart(teamName, btnElement) {
@@ -336,7 +400,7 @@
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: 'OpenStreetMap'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(panelMap);
 
       allStations.forEach(s => {
@@ -345,7 +409,7 @@
       });
 
       panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
-        .bindPopup(`<strong>${teamName}</strong><br>Rastreando ubicación en tiempo real...`)
+        .bindPopup(`<strong>${escapeHtml(teamName)}</strong><br>Rastreando ubicación en tiempo real...`)
         .openPopup();
 
       panelMap.invalidateSize();
@@ -364,13 +428,6 @@
       panelMap = null;
     }
   }
-
-  function escapeHtml(text) {
-    return text ? text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])) : '';
-  }
-
-  loadDashboard();
-  setInterval(loadDashboard, 4000);
 </script>
 
 </body>
