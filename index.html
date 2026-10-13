@@ -101,6 +101,13 @@
       margin-bottom: 15px;
     }
 
+    .privacy-notice {
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 15px;
+      line-height: 1.3;
+    }
+
     button.btn-primary {
       width: 100%;
       padding: 15px;
@@ -211,10 +218,14 @@
     </p>
     
     <label for="team-name">Nombre del Equipo:</label>
-    <input type="text" id="team-name" placeholder="Ej: Los Cazafantasmas" maxlength="30" autocomplete="off">
+    <input type="text" id="team-name" placeholder="Ej: Los Cazafantasmas" maxlength="30" autocomplete="off" autocorrect="off">
 
-    <label for="team-members">Número de Participantes (mínimo 2):</label>
+    <label for="team-members">Número de Participantes (mínimo 2, máximo 20):</label>
     <input type="number" id="team-members" min="2" max="20" value="2" placeholder="2">
+
+    <p class="privacy-notice">
+      📍 <strong>Aviso de Privacidad:</strong> Al registrarte, permites el envío de la ubicación GPS de tu dispositivo durante la actividad únicamente para la gestión de seguridad y localización en el mapa por parte de la Organización.
+    </p>
 
     <div id="register-error" class="error hidden"></div>
     <button id="btn-start" class="btn-primary" onclick="registerTeam()">Registrar Equipo</button>
@@ -243,7 +254,7 @@
     <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;"></p>
 
     <label for="station-code" id="label-code">Palabra Clave de la Estación:</label>
-    <input type="text" id="station-code" placeholder="Introduce la palabra clave..." autocomplete="off">
+    <input type="text" id="station-code" placeholder="Introduce la palabra clave..." autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false">
     
     <button id="btn-validate" class="btn-primary" onclick="validateCode()">Validar Código</button>
     <div id="game-status" class="status-msg"></div>
@@ -287,8 +298,8 @@
 
   let startTime = null;
   let timerInterval = null;
-  let statusPollInterval = null;
-  let gpsInterval = null;
+  let isPollingActive = false;
+  let lastGpsSentTime = 0;
   let teamNameGlobal = "";
 
   let currentStepIndex = 0;
@@ -303,6 +314,7 @@
   let currentUserLat = null;
   let currentUserLng = null;
 
+  // CONFIGURACIÓN DE LAS 4 ESTACIONES
   const allStations = [
     { 
       id: 0, 
@@ -349,10 +361,31 @@
     lng: -2.4376785
   };
 
-  const badWords = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "pollen", "gilipollas"];
+  // FILTRO MEJORADO DE PALABRAS PROHIBIDAS (CON LÍMITES DE PALABRA Y NORMALIZACIÓN)
+  const badWordsList = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "gilipollas"];
 
-  // SE AMPLÍA EL TIMEOUT A 18 SEGUNDOS PARA EL ARRANQUE DE GOOGLE APPS SCRIPT
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 18000) {
+  function normalizeText(str) {
+    return String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
+  function validateInputName(name) {
+    const regex = /^[a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ\s]{3,30}$/;
+    if (!regex.test(name)) {
+      return "El nombre debe contener entre 3 y 30 caracteres (solo letras y números, sin símbolos).";
+    }
+    
+    const cleanStr = normalizeText(name);
+    for (let word of badWordsList) {
+      const pattern = new RegExp(`\\b${word}\\b`, 'i');
+      if (pattern.test(cleanStr)) {
+        return "Ese nombre contiene palabras no permitidas. Por favor, elige otro.";
+      }
+    }
+    return null;
+  }
+
+  // FETCH CON TIMEOUT RESILIENTE
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -364,6 +397,31 @@
       throw err;
     }
   }
+
+  // COLA DE REINTENTOS PARA ENVÍOS OFFLINE EN ZONAS CON POCA COBERTA
+  async function sendSyncData(actionUrl) {
+    try {
+      await fetch(actionUrl, { mode: 'no-cors' });
+    } catch (err) {
+      console.warn("Fallo de red en sincronización. Se guardará para reintentar:", actionUrl);
+      let pending = JSON.parse(localStorage.getItem('pending_sync') || "[]");
+      pending.push(actionUrl);
+      localStorage.setItem('pending_sync', JSON.stringify(pending));
+    }
+  }
+
+  function flushPendingSync() {
+    let pending = JSON.parse(localStorage.getItem('pending_sync') || "[]");
+    if (pending.length === 0) return;
+
+    let remaining = [];
+    pending.forEach(url => {
+      fetch(url, { mode: 'no-cors' }).catch(() => remaining.push(url));
+    });
+    localStorage.setItem('pending_sync', JSON.stringify(remaining));
+  }
+
+  setInterval(flushPendingSync, 12000);
 
   window.addEventListener('DOMContentLoaded', () => {
     restoreSession();
@@ -431,10 +489,10 @@
         (pos) => {
           currentUserLat = pos.coords.latitude;
           currentUserLng = pos.coords.longitude;
-          if (teamNameGlobal) sendLocationToServer(currentUserLat, currentUserLng);
+          maybeSendLocation(currentUserLat, currentUserLng);
         },
         (err) => console.warn("GPS no disponible inicialmente:", err),
-        { enableHighAccuracy: true, timeout: 6000 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
 
       navigator.geolocation.watchPosition(
@@ -445,28 +503,22 @@
           if (leafletMap) {
             updateUserMarker(currentUserLat, currentUserLng);
           }
-
-          if (teamNameGlobal) {
-            sendLocationToServer(currentUserLat, currentUserLng);
-          }
+          maybeSendLocation(currentUserLat, currentUserLng);
         },
         (err) => console.warn("Sombra de GPS:", err),
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 3000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
       );
-
-      if (gpsInterval) clearInterval(gpsInterval);
-      gpsInterval = setInterval(() => {
-        if (teamNameGlobal && currentUserLat && currentUserLng) {
-          sendLocationToServer(currentUserLat, currentUserLng);
-        }
-      }, 10000);
     }
   }
 
-  function sendLocationToServer(lat, lng) {
-    if (!lat || !lng || !teamNameGlobal) return;
-    fetch(`${WEB_APP_URL}?action=updateLocation&teamName=${encodeURIComponent(teamNameGlobal)}&lat=${lat}&lng=${lng}`, { mode: 'no-cors' })
-      .catch(() => {});
+  // LIMITA EL ENVÍO DE UBICACIÓN COMO MÁXIMO CADA 15 SEGUNDOS Y SOLO SI LA PESTAÑA ESTÁ ACTIVA
+  function maybeSendLocation(lat, lng) {
+    if (document.hidden || !lat || !lng || !teamNameGlobal) return;
+    const now = Date.now();
+    if (now - lastGpsSentTime >= 15000) {
+      lastGpsSentTime = now;
+      sendSyncData(`${WEB_APP_URL}?action=updateLocation&teamName=${encodeURIComponent(teamNameGlobal)}&lat=${lat}&lng=${lng}`);
+    }
   }
 
   function updateUserMarker(lat, lng) {
@@ -487,20 +539,6 @@
     }
   }
 
-  function validateInputName(name) {
-    const regex = /^[a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ\s]{3,30}$/;
-    if (!regex.test(name)) {
-      return "El nombre debe contener entre 3 y 30 caracteres (solo letras y números, sin símbolos).";
-    }
-    const lower = name.toLowerCase();
-    for (let word of badWords) {
-      if (lower.includes(word)) {
-        return "Ese nombre contiene palabras no permitidas. Por favor, elige otro.";
-      }
-    }
-    return null;
-  }
-
   async function registerTeam() {
     const teamInput = document.getElementById('team-name').value.trim();
     const membersInput = parseInt(document.getElementById('team-members').value, 10);
@@ -516,8 +554,8 @@
       return;
     }
 
-    if (isNaN(membersInput) || membersInput < 2) {
-      errorDiv.innerText = "El equipo debe tener como mínimo 2 participantes.";
+    if (isNaN(membersInput) || membersInput < 2 || membersInput > 20) {
+      errorDiv.innerText = "El número de participantes debe estar entre 2 y 20.";
       errorDiv.classList.remove('hidden');
       return;
     }
@@ -541,66 +579,75 @@
       const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&participantCount=${membersInput}&assignedStation=${encodeURIComponent(initialProgressText)}`;
       const response = await fetchWithTimeout(requestUrl, {}, 18000);
       const textResponse = await response.text();
-      let data = JSON.parse(textResponse);
+      let data = {};
+      
+      try { data = JSON.parse(textResponse); } catch(e) { data = { status: "OK" }; }
 
       if (data.status === "DUPLICATE") {
-        errorDiv.innerText = "¡Ese nombre de equipo ya existe! Prueba a añadir un número o cambiar el nombre.";
+        errorDiv.innerText = "¡Ese nombre de equipo ya existe! Prueba a cambiar el nombre o añadir una cifra.";
         errorDiv.classList.remove('hidden');
         btn.disabled = false;
         btn.innerText = "REGISTRAR EQUIPO";
         return;
       }
 
-      if (data.status === "OK") {
-        saveSession('wait');
+      saveSession('wait');
 
-        if (currentUserLat && currentUserLng) {
-          sendLocationToServer(currentUserLat, currentUserLng);
-        }
-
-        document.getElementById('screen-start').classList.add('hidden');
-        document.getElementById('screen-wait').classList.remove('hidden');
-        document.getElementById('tools-bar').classList.remove('hidden');
-        document.getElementById('wait-team-name').innerText = teamNameGlobal;
-
-        startApprovalPolling();
+      if (currentUserLat && currentUserLng) {
+        maybeSendLocation(currentUserLat, currentUserLng);
       }
 
+      document.getElementById('screen-start').classList.add('hidden');
+      document.getElementById('screen-wait').classList.remove('hidden');
+      document.getElementById('tools-bar').classList.remove('hidden');
+      document.getElementById('wait-team-name').innerText = teamNameGlobal;
+
+      startApprovalPolling();
+
     } catch (err) {
-      errorDiv.innerText = "Error de conexión con el servidor. Revisa tu conexión e inténtalo con otro nombre de equipo.";
+      errorDiv.innerText = "Error de red o servidor ocupado. Si ya pulsaste, acércate a la mesa de control.";
       errorDiv.classList.remove('hidden');
       btn.disabled = false;
       btn.innerText = "REGISTRAR EQUIPO";
     }
   }
 
+  // POLLING RECURSIVO (EVITA COLAPSO Y ACUMULACIÓN DE PETICIONES)
   function startApprovalPolling() {
-    if (statusPollInterval) clearInterval(statusPollInterval);
-    statusPollInterval = setInterval(checkStartApproval, 2500);
+    isPollingActive = true;
+    pollApprovalLoop();
   }
 
-  async function checkStartApproval() {
-    try {
-      const response = await fetchWithTimeout(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`, {}, 6000);
-      const data = await response.json();
+  async function pollApprovalLoop() {
+    if (!isPollingActive || document.getElementById('screen-wait').classList.contains('hidden')) return;
 
-      if (data.status === "En curso") {
-        clearInterval(statusPollInterval);
-        
-        startTime = Date.now();
-        saveSession('game');
+    if (!document.hidden) {
+      try {
+        const response = await fetchWithTimeout(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`, {}, 6000);
+        const data = await response.json();
 
-        document.getElementById('screen-wait').classList.add('hidden');
-        document.getElementById('screen-game').classList.remove('hidden');
-        document.getElementById('tools-bar').classList.remove('hidden');
-        document.getElementById('display-team-name').innerText = teamNameGlobal;
+        if (data.status === "En curso") {
+          isPollingActive = false;
+          
+          startTime = Date.now();
+          saveSession('game');
 
-        updateGameUI();
-        startTimer();
+          document.getElementById('screen-wait').classList.add('hidden');
+          document.getElementById('screen-game').classList.remove('hidden');
+          document.getElementById('tools-bar').classList.remove('hidden');
+          document.getElementById('display-team-name').innerText = teamNameGlobal;
+
+          updateGameUI();
+          startTimer();
+          return;
+        }
+      } catch (err) {
+        // Ignorar fallos de red esporádicos en el bucle
       }
-    } catch (err) {
-      // Ignorar fallos temporales de red durante la espera
     }
+
+    // Espera 5 segundos tras finalizar la petición antes de hacer la siguiente
+    setTimeout(pollApprovalLoop, 5000);
   }
 
   function getCurrentTarget() {
@@ -688,7 +735,7 @@
         progressText = "De regreso a Base";
       }
 
-      fetch(`${WEB_APP_URL}?action=updateProgress&teamName=${encodeURIComponent(teamNameGlobal)}&progress=${encodeURIComponent(progressText)}`, { mode: 'no-cors' });
+      sendSyncData(`${WEB_APP_URL}?action=updateProgress&teamName=${encodeURIComponent(teamNameGlobal)}&progress=${encodeURIComponent(progressText)}`);
 
       saveSession('game');
 
@@ -724,7 +771,7 @@
     const seconds = String(totalSeconds % 60).padStart(2, '0');
     const timeFormatted = `${minutes}m ${seconds}s`;
 
-    fetch(`${WEB_APP_URL}?action=finish&teamName=${encodeURIComponent(teamNameGlobal)}&endTime=${encodeURIComponent(endHourFormatted)}&totalTime=${encodeURIComponent(timeFormatted)}`, { mode: 'no-cors' });
+    sendSyncData(`${WEB_APP_URL}?action=finish&teamName=${encodeURIComponent(teamNameGlobal)}&endTime=${encodeURIComponent(endHourFormatted)}&totalTime=${encodeURIComponent(timeFormatted)}`);
 
     document.getElementById('screen-game').classList.add('hidden');
     document.getElementById('tools-bar').classList.add('hidden');
@@ -737,7 +784,7 @@
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: 'OpenStreetMap'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(leafletMap);
 
     renderTargetOnMap();
