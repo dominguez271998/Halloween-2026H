@@ -5,19 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Escáner RA - La Sombra de Huércal</title>
 
-  <!-- A-Frame 1.3.0 + AR.js 3.4.5 (combinación compatible) -->
+  <!-- A-Frame 1.3.0 + AR.js 3.4.5 -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+  <!-- Extras para soporte de animaciones 3D GLTF -->
+  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
 
   <style>
-    /* Reset limitado a lo nuestro: un "* { margin:0; padding:0 }" global también
-       pisa los elementos que inyecta AR.js (vídeo, cargador). */
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-
-    /* CLAVE DEL FALLO: AR.js coloca el <video> de la cámara con z-index negativo.
-       Si <body> tiene un fondo opaco (y html también), el fondo del body se pinta
-       ENCIMA del vídeo y la cámara "desaparece". El negro va solo en <html>,
-       que se pinta por detrás de todo, y <body> queda transparente. */
     html { background: #000; }
     body {
       background: transparent;
@@ -47,7 +42,7 @@
       font-size: 0.85rem;
       text-align: center;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
-      pointer-events: none; /* no bloquea toques sobre la cámara */
+      pointer-events: none;
     }
 
     .btn-back-game {
@@ -73,31 +68,31 @@
 
   <button type="button" class="btn-back-game" onclick="window.history.back()">Volver al Juego</button>
 
-  <!--
-    - detectionMode: mono  -> solo marcadores de patrón (.patt). Antes era
-      "mono_and_matrix", que ejecuta además la detección de códigos de matriz
-      que aquí no se usa y resta fluidez con 5 patrones.
-    - renderer alpha / sin antialias: lienzo transparente (se ve la cámara) y más ligero.
-    - device-orientation-permission-ui desactivado: evita el aviso de permiso de
-      movimiento en iOS, que no se necesita en RA con marcadores.
-    Los emojis se han quitado de los textos 3D: la fuente por defecto de A-Frame no
-    los dibuja (salen en blanco). Siguen funcionando en la barra superior (HTML).
-  -->
   <a-scene embedded
            arjs="sourceType: webcam; detectionMode: mono; debugUIEnabled: false;"
            renderer="alpha: true; antialias: false"
            vr-mode-ui="enabled: false"
            device-orientation-permission-ui="enabled: false">
 
-    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (MARCADOR CORRECTO) -->
+    <!-- RECURSOS: CARGA DEL MODELO 3D DEL FANTASMA -->
+    <a-assets timeout="4000">
+      <a-asset-item id="modelo-fantasma" src="ghost.glb"></a-asset-item>
+    </a-assets>
+
+    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (MARCADOR CORRECTO + FANTASMA 3D) -->
     <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
-      <a-light type="ambient" color="#ffffff" intensity="1.2"></a-light>
-      <a-light type="directional" color="#ff6b00" intensity="1.5" position="0 2 1"></a-light>
+      <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
+      <a-light type="directional" color="#ff6b00" intensity="2.0" position="0 2 1"></a-light>
 
-      <a-sphere position="0 0.5 0" radius="0.35" color="#ff6b00" material="opacity: 0.85; transparent: true"
-                animation="property: scale; to: 1.25 1.25 1.25; dir: alternate; easing: easeInOutSine; loop: true; dur: 1000;"></a-sphere>
+      <!-- MODELO 3D DEL FANTASMA CON MOVIMIENTO FLOTANTE -->
+      <a-entity gltf-model="#modelo-fantasma"
+                position="0 0.2 0"
+                scale="0.6 0.6 0.6"
+                animation-mixer
+                animation="property: position; to: 0 0.6 0; dir: alternate; easing: easeInOutSine; loop: true; dur: 1500;">
+      </a-entity>
 
-      <a-plane position="0 1.9 0" width="2.6" height="0.8"
+      <a-plane position="0 2.2 0" width="2.6" height="0.8"
                material="shader: flat; color: #000000; opacity: 0.9; transparent: true">
         <a-text value="¡REVELACIÓN DE LA PITONISA!\nClave: SANTOS"
                 align="center" width="2.4" color="#ff6b00" position="0 0 0.02"></a-text>
@@ -106,7 +101,7 @@
 
     <!-- 2. TÚNEL: MARCADOR FALSO 1 - ROBÓTICA -->
     <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1">
-      <a-plane position="0 0 0.1" width="2.2" height="1.2"
+      <a-plane position="0 0.5 0.1" width="2.2" height="1.2"
                material="shader: flat; color: #000000; opacity: 0.92; transparent: true">
         <a-text value="KaMaDo Robotic's School\n\n¡SÍMBOLO FALSO!\nAquí solo hay robots. ¡Sigue buscando!"
                 align="center" width="2.0" color="#3b82f6" position="0 0 0.02"></a-text>
@@ -115,7 +110,7 @@
 
     <!-- 3. TÚNEL: MARCADOR FALSO 2 - ALCALDE -->
     <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2">
-      <a-plane position="0 0 0.1" width="2.2" height="1.2"
+      <a-plane position="0 0.5 0.1" width="2.2" height="1.2"
                material="shader: flat; color: #000000; opacity: 0.92; transparent: true">
         <a-text value="AYUNTAMIENTO DE HUÉRCAL\n\n¡Despacho del Alcalde!\nEste símbolo es falso. ¡Huye de la motosierra!"
                 align="center" width="2.0" color="#eab308" position="0 0 0.02"></a-text>
@@ -124,7 +119,7 @@
 
     <!-- 4. TÚNEL: MARCADOR FALSO 3 - PÓSTER -->
     <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3">
-      <a-plane position="0 0 0.1" width="2.2" height="1.2"
+      <a-plane position="0 0.5 0.1" width="2.2" height="1.2"
                material="shader: flat; color: #000000; opacity: 0.92; transparent: true">
         <a-text value="PÓSTER MALDITO\n\n¡Atrápame si puedes!\nMarca falsa. Corre por el túnel."
                 align="center" width="2.0" color="#ef4444" position="0 0 0.02"></a-text>
@@ -133,7 +128,7 @@
 
     <!-- 5. TÚNEL: MARCADOR CORRECTO - CÓDIGO NUMÉRICO -->
     <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto">
-      <a-plane position="0 0 0.15" width="2.6" height="1.4"
+      <a-plane position="0 0.5 0.15" width="2.6" height="1.4"
                material="shader: flat; color: #0d0d0d; opacity: 0.95; transparent: true">
         <a-text value="CÓDIGO DEL TÚNEL DETECTADO"
                 align="center" width="2.2" color="#ff6b00" position="0 0.35 0.02"></a-text>
@@ -150,9 +145,8 @@
   'use strict';
 
   const DEFAULT_STATUS = '👁️ Busca y escanea los símbolos de la Sombra';
-  const SPEECH_COOLDOWN_MS = 8000; // evita repetir la voz si el marcador parpadea
+  const SPEECH_COOLDOWN_MS = 8000;
 
-  // Un solo sitio para configurar qué pasa con cada marcador.
   const MARKERS = {
     'marker-escudo': {
       status: '✨ ¡Espectro Verdadero Detectado!',
@@ -185,19 +179,16 @@
     window.speechSynthesis.speak(u);
   }
 
-  // iOS/Android solo permiten hablar tras un gesto del usuario: "desbloqueamos"
-  // la síntesis de voz con el primer toque en pantalla.
   window.addEventListener('pointerdown', () => {
     try {
       const u = new SpeechSynthesisUtterance('');
       u.volume = 0;
       window.speechSynthesis.speak(u);
-    } catch (e) { /* sin voz disponible */ }
+    } catch (e) {}
   }, { once: true });
 
   window.addEventListener('DOMContentLoaded', () => {
 
-    // Eventos de los marcadores (un único bucle en lugar de código duplicado)
     Object.entries(MARKERS).forEach(([id, cfg]) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -207,19 +198,15 @@
       });
     });
 
-    // --- Diagnóstico: si algo falla, la barra superior dice qué ---
-
     if (!window.isSecureContext) {
-      setStatus('⚠️ La cámara solo funciona con HTTPS (o localhost).');
+      setStatus('⚠️ La cámara solo funciona con HTTPS.');
     }
 
-    // Cámara bloqueada / denegada / no disponible
     window.addEventListener('camera-error', () => {
       setStatus('⚠️ No se pudo abrir la cámara. Permite el acceso y recarga.');
     });
     window.addEventListener('camera-init', () => setStatus(DEFAULT_STATUS));
 
-    // Comprobar que cada .patt existe y no es una página de error en HTML
     document.querySelectorAll('a-marker[type="pattern"]').forEach((marker) => {
       const url = marker.getAttribute('url');
       fetch(url)
@@ -228,16 +215,14 @@
         .catch(() => setStatus('⚠️ Falta o falla el archivo ' + url));
     });
 
-    // Si pasados 10 s el vídeo no ha arrancado, avisamos
     setTimeout(() => {
       const v = document.getElementById('arjs-video') || document.querySelector('video');
       if (!v || v.readyState < 2) {
-        setStatus('⚠️ La cámara no arranca. Revisa permisos y que la web use HTTPS.');
+        setStatus('⚠️ La cámara no arranca. Revisa permisos e HTTPS.');
       }
     }, 10000);
   });
 
-  // Liberar la cámara al salir y recuperarla si el navegador restaura la página en caché
   window.addEventListener('pagehide', () => {
     document.querySelectorAll('video').forEach((v) => {
       if (v.srcObject) v.srcObject.getTracks().forEach((t) => t.stop());
