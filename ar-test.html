@@ -74,12 +74,9 @@
            vr-mode-ui="enabled: false"
            device-orientation-permission-ui="enabled: false">
 
-    <!-- RECURSOS: CARGA DEL FANTASMA 3D Y DE TUS IMÁGENES PERSONALIZADAS -->
+    <!-- RECURSOS: CARGA SOLO DEL MODELO FANTASMA 3D -->
     <a-assets timeout="4000">
       <a-asset-item id="modelo-fantasma" src="ghost.glb"></a-asset-item>
-      <img id="img-falso1" src="falso1.png">
-      <img id="img-falso2" src="falso2.png">
-      <img id="img-falso3" src="falso3.png">
     </a-assets>
 
     <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (MARCADOR CORRECTO + FANTASMA 3D) -->
@@ -101,27 +98,27 @@
       </a-plane>
     </a-marker>
 
-    <!-- 2. TÚNEL: MARCADOR FALSO 1 (MUESTRA TU IMAGEN falso1.png) -->
+    <!-- 2. TÚNEL: MARCADOR FALSO 1 (MUESTRA DIRECTAMENTE falso1.png) -->
     <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1">
-      <a-image src="#img-falso1" position="0 0.5 0" width="2.5" height="1.5"
+      <a-image src="falso1.png" position="0 0 0.1" rotation="0 0 0" width="2.5" height="1.5"
                material="shader: flat; transparent: true"></a-image>
     </a-marker>
 
-    <!-- 3. TÚNEL: MARCADOR FALSO 2 (MUESTRA TU IMAGEN falso2.png) -->
+    <!-- 3. TÚNEL: MARCADOR FALSO 2 (MUESTRA DIRECTAMENTE falso2.png) -->
     <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2">
-      <a-image src="#img-falso2" position="0 0.5 0" width="2.5" height="1.5"
+      <a-image src="falso2.png" position="0 0 0.1" rotation="0 0 0" width="2.5" height="1.5"
                material="shader: flat; transparent: true"></a-image>
     </a-marker>
 
-    <!-- 4. TÚNEL: MARCADOR FALSO 3 (MUESTRA TU IMAGEN falso3.png) -->
+    <!-- 4. TÚNEL: MARCADOR FALSO 3 (MUESTRA DIRECTAMENTE falso3.png) -->
     <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3">
-      <a-image src="#img-falso3" position="0 0.5 0" width="2.5" height="1.5"
+      <a-image src="falso3.png" position="0 0 0.1" rotation="0 0 0" width="2.5" height="1.5"
                material="shader: flat; transparent: true"></a-image>
     </a-marker>
 
     <!-- 5. TÚNEL: MARCADOR CORRECTO - CÓDIGO NUMÉRICO -->
     <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto">
-      <a-plane position="0 0.5 0.15" width="2.6" height="1.4"
+      <a-plane position="0 0 0.15" width="2.6" height="1.4"
                material="shader: flat; color: #0d0d0d; opacity: 0.95; transparent: true">
         <a-text value="CÓDIGO DEL TÚNEL DETECTADO"
                 align="center" width="2.2" color="#ff6b00" position="0 0.35 0.02"></a-text>
