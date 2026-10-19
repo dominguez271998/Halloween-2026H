@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
   <title>Panel de Control - Organización</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root {
       --bg: #121212;
@@ -13,120 +14,68 @@
       --text: #e0e0e0;
       --success: #22c55e;
       --warning: #eab308;
+      --danger: #ef4444;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background: var(--bg); color: var(--text); padding: 20px; }
-    
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-      gap: 15px;
-    }
+
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
     h1 { color: var(--accent); font-size: 1.5rem; }
 
     .btn-approve-all {
-      background: var(--accent);
-      color: #000;
-      border: none;
-      padding: 10px 18px;
-      font-weight: bold;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
-      transition: transform 0.1s ease, opacity 0.2s;
+      background: var(--accent); color: #000; border: none; padding: 10px 18px; font-weight: bold;
+      border-radius: 8px; cursor: pointer; font-size: 0.95rem; text-transform: uppercase;
+      box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3); transition: transform 0.1s ease, opacity 0.2s;
     }
     .btn-approve-all:hover { opacity: 0.9; }
     .btn-approve-all:active { transform: scale(0.97); }
     .btn-approve-all:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 25px; }
     .stat-card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #333; text-align: center; }
     .stat-value { font-size: 2rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
-    
-    table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 8px; overflow: hidden; }
+
+    .table-wrap { overflow-x: auto; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); min-width: 760px; }
     th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #333; }
-    th { background: #252525; color: #aaa; font-size: 0.85rem; text-transform: uppercase; }
-    
-    .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+    th { background: #252525; color: #aaa; font-size: 0.85rem; text-transform: uppercase; white-space: nowrap; }
+    td { font-variant-numeric: tabular-nums; }
+
+    .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; white-space: nowrap; }
     .badge-pending { background: rgba(234, 179, 8, 0.2); color: var(--warning); border: 1px solid var(--warning); }
     .badge-active { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #60a5fa; }
     .badge-done { background: rgba(34, 197, 94, 0.2); color: var(--success); border: 1px solid var(--success); }
 
-    .btn-action {
-      border: none;
-      padding: 6px 10px;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      margin-right: 5px;
-    }
-
+    .btn-action { border: none; padding: 6px 10px; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 0.8rem; margin-right: 5px; }
     .btn-approve { background: var(--success); color: #000; }
     .btn-loc { background: #3b82f6; color: #fff; }
     .btn-loc-no { background: #4b5563; color: #d1d5db; }
+    .btn-action:disabled { opacity: 0.5; cursor: not-allowed; }
+    .gps-age { display: block; font-size: 0.7rem; color: #e0ecff; font-weight: normal; margin-top: 2px; }
+    .btn-loc.stale { background: #b45309; }   /* ubicación de hace más de 2 min */
 
     .hidden { display: none !important; }
+    .banner { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: #fca5a5; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; margin-bottom: 15px; }
 
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.85);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-      z-index: 1000;
-    }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; padding: 15px; z-index: 1000; }
+    .modal-content { background: #1e1e1e; border: 1px solid var(--accent); border-radius: 12px; width: 100%; max-width: 550px; padding: 20px; text-align: center; }
+    #panel-map { width: 100%; height: 380px; border-radius: 8px; border: 1px solid #444; margin: 15px 0; }
 
-    .modal-content {
-      background: #1e1e1e;
-      border: 1px solid var(--accent);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 550px;
-      padding: 20px;
-      text-align: center;
-    }
-
-    #panel-map {
-      width: 100%;
-      height: 380px;
-      border-radius: 8px;
-      border: 1px solid #444;
-      margin: 15px 0;
-    }
-
-    input.pin-input {
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid #555;
-      background: #222;
-      color: #fff;
-      font-size: 1.2rem;
-      text-align: center;
-      margin: 15px 0;
-      width: 100%;
-      max-width: 200px;
-    }
+    input.pin-input { padding: 12px; border-radius: 6px; border: 1px solid #555; background: #222; color: #fff; font-size: 1.1rem; text-align: center; margin: 15px 0; width: 100%; max-width: 280px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
 </head>
 <body>
 
-  <!-- MODAL DE AUTENTICACIÓN CON PIN PARA LA ORGANIZACIÓN -->
+  <!-- ACCESO CON PIN: el PIN lo comprueba el servidor (propiedad ADMIN_PIN del Apps Script), no esta página -->
   <div id="pin-modal" class="modal-overlay">
-    <div class="modal-content">
+    <form class="modal-content" id="pin-form" autocomplete="off">
       <h2 style="color: var(--accent);">🔐 Acceso Organización</h2>
       <p style="margin-top: 10px; font-size: 0.9rem; color: #ccc;">Introduce el PIN para gestionar el evento:</p>
-      <input type="password" id="admin-pin" class="pin-input" maxlength="8" placeholder="PIN" autocomplete="off">
-      <div id="pin-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 10px;" class="hidden">PIN Incorrecto</div>
-      <button class="btn-approve-all" style="width: 100%;" onclick="checkPin()">Acceder</button>
-    </div>
+      <input type="password" id="admin-pin" class="pin-input" placeholder="PIN" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div id="pin-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 10px;" class="hidden" role="alert"></div>
+      <button type="submit" id="btn-pin" class="btn-approve-all" style="width: 100%;">Acceder</button>
+    </form>
   </div>
 
   <div id="panel-content" class="hidden">
@@ -135,299 +84,267 @@
         <h1>Centro de Control - Escape Room</h1>
         <div id="last-update" style="color: #888; font-size: 0.85rem; margin-top: 4px;">Actualizando...</div>
       </div>
-      
-      <button id="btn-approve-all-main" class="btn-approve-all" onclick="approveAllTeams()">🚀 Dar Salida a Todos</button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" id="btn-approve-all-main" class="btn-approve-all">🚀 Dar Salida a Todos</button>
+        <button type="button" id="btn-logout" class="btn-approve-all" style="background:#333; color:#ddd; box-shadow:none;">Salir</button>
+      </div>
     </div>
+
+    <div id="conn-error" class="banner hidden" role="alert">Sin conexión con el servidor. Se reintenta automáticamente; los datos de la tabla pueden estar desactualizados.</div>
 
     <div class="stats-grid">
-      <div class="stat-card">
-        <div>Equipos Totales</div>
-        <div id="stat-total" class="stat-value">0</div>
-      </div>
-      <div class="stat-card">
-        <div>Participantes Totales</div>
-        <div id="stat-members" class="stat-value" style="color: #3b82f6;">0</div>
-      </div>
-      <div class="stat-card">
-        <div>Pendientes Salida</div>
-        <div id="stat-pending" class="stat-value" style="color: var(--warning);">0</div>
-      </div>
-      <div class="stat-card">
-        <div>En Juego</div>
-        <div id="stat-active" class="stat-value" style="color: #60a5fa;">0</div>
-      </div>
-      <div class="stat-card">
-        <div>Finalizados</div>
-        <div id="stat-done" class="stat-value" style="color: var(--success);">0</div>
-      </div>
+      <div class="stat-card"><div>Equipos Totales</div><div id="stat-total" class="stat-value">0</div></div>
+      <div class="stat-card"><div>Participantes Totales</div><div id="stat-members" class="stat-value" style="color: #3b82f6;">0</div></div>
+      <div class="stat-card"><div>Pendientes Salida</div><div id="stat-pending" class="stat-value" style="color: var(--warning);">0</div></div>
+      <div class="stat-card"><div>En Juego</div><div id="stat-active" class="stat-value" style="color: #60a5fa;">0</div></div>
+      <div class="stat-card"><div>Finalizados</div><div id="stat-done" class="stat-value" style="color: var(--success);">0</div></div>
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Equipo</th>
-          <th>Participantes</th>
-          <th>Estado</th>
-          <th>Progreso / Estación</th>
-          <th>Hora Salida</th>
-          <th>Hora Llegada</th>
-          <th>Tiempo Total</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="table-body">
-        <tr><td colspan="8" style="text-align:center;">Cargando datos del servidor...</td></tr>
-      </tbody>
-    </table>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Equipo</th><th>Participantes</th><th>Estado</th><th>Progreso / Estación</th>
+            <th>Hora Salida</th><th>Hora Llegada</th><th>Tiempo Total</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="8" style="text-align:center;">Cargando datos del servidor...</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <div id="modal-panel-map" class="modal-overlay hidden">
     <div class="modal-content">
       <h3 id="panel-map-title" style="color: var(--accent);">Ubicación del Equipo</h3>
-      
       <div id="panel-map"></div>
-
-      <button class="btn-approve-all" style="width: 100%;" onclick="closePanelMap()">Cerrar Mapa</button>
+      <button type="button" class="btn-approve-all" style="width: 100%;" id="btn-close-map">Cerrar Mapa</button>
     </div>
   </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" async></script>
 
 <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
-  const ADMIN_PIN = "2026"; // PIN por defecto para la Organización
+(() => {
+  'use strict';
 
-  let panelMap = null;
-  let panelMapMarker = null;
-  let currentTrackedTeam = null;
+  const CFG = window.ESCAPE_CONFIG;
+  if (!CFG) { document.body.innerHTML = '<p style="padding:24px;color:#ef4444">No se ha podido cargar config.js.</p>'; return; }
+  const $ = (id) => document.getElementById(id);
+  const REFRESH_MS = 5000;
+  const GPS_OLD_MS = 120000;          // una ubicación de hace más de 2 min se marca como atrasada
 
-  const allStations = [
-    { title: "🏁 Base: Cortijo Moreno", desc: "Punto de Inicio y Salida", lat: 36.8836232, lng: -2.4376785 },
-    { title: "Estación 1: Centro Social 'José Guirado'", desc: "Prueba: Psicofonía en la oscuridad", lat: 36.8861492, lng: -2.4364976 },
-    { title: "Estación 2: Túnel Vías del Tren", desc: "Prueba: Motosierra + Búsqueda RA", lat: 36.884500, lng: -2.439200 },
-    { title: "Estación 3: Calle Oscura", desc: "Prueba: Búsqueda de números + Orden con el actor", lat: 36.882500, lng: -2.438200 },
-    { title: "Estación 4: Cortijo Moreno", desc: "Prueba: La Pitonisa y Fantasma RA", lat: 36.8836232, lng: -2.4376785 }
-  ];
+  let pin = '';
+  let timer = null, loading = false;
+  let panelMap = null, panelMapMarker = null, trackedTeam = null;
+  let lastData = [];
 
-  function checkPin() {
-    const entered = document.getElementById('admin-pin').value.trim();
-    if (entered === ADMIN_PIN) {
-      document.getElementById('pin-modal').classList.add('hidden');
-      document.getElementById('panel-content').classList.remove('hidden');
-      loadDashboard();
-      setInterval(loadDashboard, 4000);
-    } else {
-      document.getElementById('pin-error').classList.remove('hidden');
-    }
+  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+
+  // ----------------------------------------------------------------------------------- acceso
+  async function api(params, timeoutMs) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs || 15000);
+    try {
+      const res = await fetch(`${CFG.WEB_APP_URL}?${new URLSearchParams(Object.assign({ key: pin }, params))}`, { signal: controller.signal });
+      return JSON.parse(await res.text());
+    } finally { clearTimeout(id); }
   }
 
-  // FIJA EL CRASH CON NOMBRES NUMÉRICOS (EJ: "2026")
-  function escapeHtml(text) {
-    const str = String(text || '');
-    return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
-  }
+  function showPinError(msg) { const e = $('pin-error'); e.textContent = msg; e.classList.remove('hidden'); }
 
-  function formatTime(val) {
-    if (!val) return '-';
-    let str = String(val).trim();
-    if (str.includes('T')) {
-      let parts = str.split('T');
-      if (parts.length > 1) {
-        return parts[1].split('.')[0];
+  async function login(candidate, silent) {
+    pin = candidate;
+    $('btn-pin').disabled = true;
+    try {
+      const d = await api({ action: 'getData' });
+      if (d.status === 'OK') {
+        try { sessionStorage.setItem('panel_pin', pin); } catch (e) { /* nada */ }
+        $('pin-modal').classList.add('hidden');
+        $('panel-content').classList.remove('hidden');
+        render(d);
+        timer = setInterval(refresh, REFRESH_MS);
+        return;
       }
-    }
-    return str;
+      if (!silent) showPinError(d.status === 'NO_ADMIN_PIN'
+        ? 'El servidor no tiene configurado el PIN (propiedad ADMIN_PIN en el Apps Script, mínimo 8 caracteres).'
+        : 'PIN incorrecto');
+    } catch (e) {
+      if (!silent) showPinError('No se pudo conectar con el servidor. Inténtalo de nuevo.');
+    } finally { $('btn-pin').disabled = false; }
+    pin = '';
+    try { sessionStorage.removeItem('panel_pin'); } catch (e) { /* nada */ }
   }
 
-  function cleanCoordinate(coord, isLat) {
-    if (coord === null || coord === undefined || coord === "") return null;
-    let str = String(coord).trim().replace(',', '.');
-    let num = parseFloat(str);
-    if (isNaN(num)) return null;
-
-    let maxLimit = isLat ? 90 : 180;
-    while (Math.abs(num) > maxLimit) {
-      num = num / 10;
-    }
-    return num;
+  function logout() {
+    clearInterval(timer); pin = '';
+    try { sessionStorage.removeItem('panel_pin'); } catch (e) { /* nada */ }
+    closePanelMap();
+    $('panel-content').classList.add('hidden');
+    $('pin-modal').classList.remove('hidden');
+    $('admin-pin').value = '';
   }
 
-  async function loadDashboard() {
-    try {
-      const res = await fetch(`${WEB_APP_URL}?action=getData`);
-      const data = await res.json();
+  // ----------------------------------------------------------------------------------- datos
+  function fmtAge(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return `hace ${s} s`;
+    if (s < 3600) return `hace ${Math.round(s / 60)} min`;
+    return `hace ${Math.round(s / 3600)} h`;
+  }
 
-      let pendingCount = 0;
-      let activeCount = 0;
-      let doneCount = 0;
-      let totalParticipants = 0;
+  const RANK = { 'Pendiente': 0, 'En curso': 1, 'Finalizado': 2 };
 
-      const tbody = document.getElementById('table-body');
-      tbody.innerHTML = data.slice().reverse().map(item => {
-        let badgeClass = "badge-pending";
-        if (item.status === "En curso") { badgeClass = "badge-active"; activeCount++; }
-        else if (item.status === "Finalizado") { badgeClass = "badge-done"; doneCount++; }
-        else { pendingCount++; }
+  function render(d) {
+    const teams = d.teams.map((t, i) => Object.assign({ order: i }, t));
+    lastData = teams;
+    const now = d.now || Date.now();
+    let pending = 0, active = 0, done = 0, members = 0;
 
-        const teamMembers = parseInt(item.participantCount, 10) || 2;
-        totalParticipants += teamMembers;
+    teams.sort((a, b) => (RANK[a.status] ?? 0) - (RANK[b.status] ?? 0) ||
+      (a.status === 'Finalizado' ? (a.secs ?? 0) - (b.secs ?? 0) : b.order - a.order));
 
-        const teamNameSafe = escapeHtml(item.team);
-        let actions = [];
+    const rows = teams.map((t) => {
+      let badge = 'badge-pending';
+      if (t.status === 'En curso') { badge = 'badge-active'; active++; }
+      else if (t.status === 'Finalizado') { badge = 'badge-done'; done++; }
+      else pending++;
+      const n = parseInt(t.participantCount, 10) || 2;
+      members += n;
 
-        if (item.status === "Pendiente") {
-          actions.push(`<button class="btn-action btn-approve" data-team="${teamNameSafe}">🟢 Salida</button>`);
+      const actions = [];
+      if (t.status === 'Pendiente') actions.push(`<button type="button" class="btn-action btn-approve" data-team="${esc(t.team)}">🟢 Salida</button>`);
+      if (t.status !== 'Finalizado') {
+        if (typeof t.lat === 'number' && typeof t.lng === 'number') {
+          const age = t.locMs ? now - t.locMs : null;
+          actions.push(`<button type="button" class="btn-action btn-loc${age !== null && age > GPS_OLD_MS ? ' stale' : ''}" data-team="${esc(t.team)}">📍 Ubicación${age !== null ? `<span class="gps-age">${fmtAge(age)}</span>` : ''}</button>`);
+        } else {
+          actions.push(`<button type="button" class="btn-action btn-loc-no" data-team="${esc(t.team)}">📍 Sin GPS</button>`);
         }
-
-        const latClean = cleanCoordinate(item.lat, true);
-        const lngClean = cleanCoordinate(item.lng, false);
-
-        if (item.status !== "Finalizado") {
-          if (latClean !== null && lngClean !== null) {
-            actions.push(`<button class="btn-action btn-loc" data-team="${teamNameSafe}" data-lat="${latClean}" data-lng="${lngClean}">📍 Ubicación</button>`);
-          } else {
-            actions.push(`<button class="btn-action btn-loc-no" data-team="${teamNameSafe}">📍 Sin GPS</button>`);
-          }
-        }
-
-        if (currentTrackedTeam && item.team === currentTrackedTeam) {
-          if (item.status === "Finalizado") {
-            closePanelMap();
-          } else if (panelMap && panelMapMarker && latClean !== null && lngClean !== null) {
-            panelMapMarker.setLatLng([latClean, lngClean]);
-            panelMap.panTo([latClean, lngClean]);
-          }
-        }
-
-        const actionsContent = actions.length > 0 ? actions.join(' ') : '<span style="color:#666; font-size:0.85rem;">-</span>';
-
-        return `
-          <tr>
-            <td><strong>${teamNameSafe}</strong></td>
-            <td><strong>👥 ${teamMembers}</strong></td>
-            <td><span class="badge ${badgeClass}">${item.status}</span></td>
-            <td>${escapeHtml(item.station || '-')}</td>
-            <td>${formatTime(item.startTime)}</td>
-            <td>${formatTime(item.endTime)}</td>
-            <td><strong>${formatTime(item.totalTime)}</strong></td>
-            <td>${actionsContent}</td>
-          </tr>
-        `;
-      }).join('');
-
-      // REENGANCHE DE EVENTOS SEGUROS SIN INYECCIÓN ONCLICK EN CADENA
-      attachTableEventListeners();
-
-      document.getElementById('stat-total').innerText = data.length;
-      document.getElementById('stat-members').innerText = totalParticipants;
-      document.getElementById('stat-pending').innerText = pendingCount;
-      document.getElementById('stat-active').innerText = activeCount;
-      document.getElementById('stat-done').innerText = doneCount;
-      document.getElementById('last-update').innerText = "Última actualización: " + new Date().toLocaleTimeString();
-
-    } catch (err) {
-      console.error("Error al actualizar panel:", err);
-    }
-  }
-
-  function attachTableEventListeners() {
-    document.querySelectorAll('.btn-approve').forEach(btn => {
-      btn.onclick = function() { approveStart(this.getAttribute('data-team'), this); };
-    });
-
-    document.querySelectorAll('.btn-loc').forEach(btn => {
-      btn.onclick = function() { 
-        showTeamLocation(this.getAttribute('data-team'), this.getAttribute('data-lat'), this.getAttribute('data-lng')); 
-      };
-    });
-
-    document.querySelectorAll('.btn-loc-no').forEach(btn => {
-      btn.onclick = function() { showNoLocation(this.getAttribute('data-team')); };
-    });
-  }
-
-  async function approveStart(teamName, btnElement) {
-    if (btnElement) btnElement.disabled = true;
-    try {
-      await fetch(`${WEB_APP_URL}?action=approve&teamName=${encodeURIComponent(teamName)}`);
-      loadDashboard();
-    } catch (err) {
-      alert("Error al dar salida al equipo.");
-      if (btnElement) btnElement.disabled = false;
-    }
-  }
-
-  async function approveAllTeams() {
-    if (!confirm("¿Estás seguro de que deseas dar la salida a TODOS los equipos pendientes a la vez?")) return;
-
-    const mainBtn = document.getElementById('btn-approve-all-main');
-    if (mainBtn) mainBtn.disabled = true;
-
-    try {
-      const res = await fetch(`${WEB_APP_URL}?action=approveAll`);
-      const data = await res.json();
-      if (data.status === "OK") {
-        alert(`¡Salida dada a ${data.count} equipo(s) correctamente!`);
-        loadDashboard();
-      }
-    } catch (err) {
-      alert("Error de conexión al dar la salida masiva.");
-    } finally {
-      if (mainBtn) mainBtn.disabled = false;
-    }
-  }
-
-  function showTeamLocation(teamName, rawLat, rawLng) {
-    const lat = cleanCoordinate(rawLat, true);
-    const lng = cleanCoordinate(rawLng, false);
-
-    if (lat === null || lng === null) {
-      alert("Coordenadas no válidas recibidas para este equipo.");
-      return;
-    }
-
-    currentTrackedTeam = teamName;
-    document.getElementById('panel-map-title').innerText = `📍 Ubicación: ${teamName}`;
-    document.getElementById('modal-panel-map').classList.remove('hidden');
-
-    setTimeout(() => {
-      if (panelMap) {
-        panelMap.remove();
-        panelMap = null;
       }
 
-      panelMap = L.map('panel-map').setView([lat, lng], 16);
+      if (trackedTeam && t.team === trackedTeam) {
+        if (t.status === 'Finalizado') closePanelMap();
+        else if (panelMap && panelMapMarker && typeof t.lat === 'number') {
+          panelMapMarker.setLatLng([t.lat, t.lng]); panelMap.panTo([t.lat, t.lng]);
+        }
+      }
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(panelMap);
+      return `<tr>
+        <td><strong>${esc(t.team)}</strong></td>
+        <td><strong>👥 ${n}</strong></td>
+        <td><span class="badge ${badge}">${esc(t.status)}</span></td>
+        <td>${esc(t.station || '-')}</td>
+        <td>${esc(t.startTime || '-')}</td>
+        <td>${esc(t.endTime || '-')}</td>
+        <td><strong>${esc(t.totalTime || '-')}</strong></td>
+        <td>${actions.join(' ') || '<span style="color:#666; font-size:0.85rem;">-</span>'}</td>
+      </tr>`;
+    });
 
-      allStations.forEach(s => {
-        L.marker([s.lat, s.lng]).addTo(panelMap)
-          .bindPopup(`<b>${s.title}</b><br><span style="color:#ff6b00;">${s.desc}</span>`);
-      });
-
-      panelMapMarker = L.marker([lat, lng]).addTo(panelMap)
-        .bindPopup(`<strong>${escapeHtml(teamName)}</strong><br>Rastreando ubicación en tiempo real...`)
-        .openPopup();
-
-      panelMap.invalidateSize();
-    }, 200);
+    $('table-body').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="8" style="text-align:center; color:#888;">Todavía no hay equipos registrados.</td></tr>';
+    $('stat-total').textContent = teams.length;
+    $('stat-members').textContent = members;
+    $('stat-pending').textContent = pending;
+    $('stat-active').textContent = active;
+    $('stat-done').textContent = done;
+    $('last-update').textContent = 'Última actualización: ' + new Date().toLocaleTimeString('es-ES');
+    $('conn-error').classList.add('hidden');
   }
 
-  function showNoLocation(teamName) {
-    alert(`El equipo "${teamName}" aún no ha enviado coordenadas GPS válidas.`);
+  async function refresh() {
+    if (loading || document.hidden) return;
+    loading = true;
+    try {
+      const d = await api({ action: 'getData' }, 12000);
+      if (d.status === 'OK') render(d);
+      else if (d.status === 'BAD_KEY' || d.status === 'NO_ADMIN_PIN') { logout(); showPinError('La sesión ha caducado: introduce el PIN otra vez.'); }
+      else $('conn-error').classList.remove('hidden');
+    } catch (e) { $('conn-error').classList.remove('hidden'); }
+    finally { loading = false; }
+  }
+
+  // ----------------------------------------------------------------------------------- acciones
+  async function approveStart(team, btn) {
+    btn.disabled = true;
+    try {
+      const d = await api({ action: 'approve', teamName: team });
+      if (d.status !== 'OK') alert(d.status === 'BUSY' ? 'El servidor está ocupado. Inténtalo otra vez.' : 'No se pudo dar la salida (' + d.status + ').');
+      loading = false; refresh();
+    } catch (e) { alert('Error de conexión al dar salida al equipo.'); btn.disabled = false; }
+  }
+
+  async function approveAll() {
+    const pendientes = lastData.filter((t) => t.status === 'Pendiente').length;
+    if (!pendientes) { alert('No hay equipos pendientes de salida.'); return; }
+    if (!confirm(`¿Dar la salida ahora a los ${pendientes} equipos pendientes a la vez?`)) return;
+    const btn = $('btn-approve-all-main');
+    btn.disabled = true;
+    try {
+      const d = await api({ action: 'approveAll' }, 30000);
+      if (d.status === 'OK') { alert(`¡Salida dada a ${d.count} equipo(s) correctamente!`); loading = false; refresh(); }
+      else alert(d.status === 'BUSY' ? 'El servidor está ocupado. Inténtalo otra vez.' : 'No se pudo dar la salida (' + d.status + ').');
+    } catch (e) { alert('Error de conexión al dar la salida masiva. Comprueba la tabla antes de repetirlo.'); }
+    finally { btn.disabled = false; }
+  }
+
+  // ----------------------------------------------------------------------------------- mapa
+  function showTeamLocation(team) {
+    const t = lastData.find((x) => x.team === team);
+    if (!t || typeof t.lat !== 'number' || typeof t.lng !== 'number') { alert(`El equipo "${team}" aún no ha enviado coordenadas GPS válidas.`); return; }
+    if (typeof L === 'undefined') { alert('El mapa necesita conexión a internet. Coordenadas: ' + t.lat + ', ' + t.lng); return; }
+
+    trackedTeam = team;
+    $('panel-map-title').textContent = `📍 Ubicación: ${team}`;
+    $('modal-panel-map').classList.remove('hidden');
+    if (panelMap) { panelMap.remove(); panelMap = null; }
+    panelMap = L.map('panel-map').setView([t.lat, t.lng], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(panelMap);
+
+    const stops = CFG.STATIONS.concat([CFG.BASE]);
+    stops.forEach((s) => {
+      L.marker([s.lat, s.lng]).addTo(panelMap).bindPopup(`<b>${esc(s.title || s.name)}</b><br><span style="color:#ff6b00;">${esc(s.staff || '')}${s.approx ? ' (ubicación aproximada)' : ''}</span>`);
+    });
+    panelMapMarker = L.marker([t.lat, t.lng]).addTo(panelMap)
+      .bindPopup(`<strong>${esc(team)}</strong><br>Rastreando ubicación...`).openPopup();
+    setTimeout(() => panelMap && panelMap.invalidateSize(), 200);
   }
 
   function closePanelMap() {
-    currentTrackedTeam = null;
-    document.getElementById('modal-panel-map').classList.add('hidden');
-    if (panelMap) {
-      panelMap.remove();
-      panelMap = null;
-    }
+    trackedTeam = null;
+    $('modal-panel-map').classList.add('hidden');
+    if (panelMap) { panelMap.remove(); panelMap = null; panelMapMarker = null; }
   }
+
+  // ----------------------------------------------------------------------------------- eventos
+  $('pin-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    $('pin-error').classList.add('hidden');
+    const v = $('admin-pin').value.trim();
+    if (v) login(v, false);
+  });
+  $('btn-approve-all-main').addEventListener('click', approveAll);
+  $('btn-logout').addEventListener('click', logout);
+  $('btn-close-map').addEventListener('click', closePanelMap);
+  $('table-body').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-team]');
+    if (!b) return;
+    const team = b.getAttribute('data-team');
+    if (b.classList.contains('btn-approve')) approveStart(team, b);
+    else if (b.classList.contains('btn-loc')) showTeamLocation(team);
+    else if (b.classList.contains('btn-loc-no')) alert(`El equipo "${team}" aún no ha enviado coordenadas GPS válidas.`);
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && pin) refresh(); });
+
+  // Recuerda el PIN solo mientras la pestaña siga abierta
+  let saved = null;
+  try { saved = sessionStorage.getItem('panel_pin'); } catch (e) { /* nada */ }
+  if (saved) login(saved, true);
+})();
 </script>
 
 </body>

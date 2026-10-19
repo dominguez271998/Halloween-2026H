@@ -2,9 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0d0d">
   <title>Escape Room Huércal de Almería</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root {
       --bg-color: #0d0d0d;
@@ -14,6 +15,7 @@
       --text-muted: #aaa;
       --success: #22c55e;
       --warning: #eab308;
+      --danger: #ef4444;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
@@ -27,62 +29,27 @@
       min-height: 100vh;
     }
 
-    .app-container {
-      width: 100%;
-      max-width: 450px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
+    .app-container { width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; }
 
-    header {
-      text-align: center;
-      border-bottom: 2px solid var(--accent);
-      padding-bottom: 10px;
-    }
-
+    header { text-align: center; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
     h1 { color: var(--accent); font-size: 1.5rem; text-transform: uppercase; letter-spacing: 1px; }
 
     .timer-badge {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #fff;
-      background: #333;
-      padding: 6px 12px;
-      border-radius: 20px;
-      display: inline-block;
-      margin-top: 8px;
+      font-size: 1.2rem; font-weight: bold; color: #fff; background: #333;
+      padding: 6px 12px; border-radius: 20px; display: inline-block; margin-top: 8px;
+      font-variant-numeric: tabular-nums;
     }
 
-    .tools-bar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 5px;
-    }
-
+    .tools-bar { display: flex; gap: 8px; margin-bottom: 5px; }
     .btn-tool {
-      flex: 1;
-      padding: 10px 5px;
-      background: #2a2a2a;
-      color: #fff;
-      border: 1px solid #444;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 0.85rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
+      flex: 1; padding: 10px 5px; background: #2a2a2a; color: #fff; border: 1px solid #444;
+      border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
     }
-
     .btn-tool:active { opacity: 0.8; }
 
     .card {
-      background: var(--card-bg);
-      border: 1px solid #333;
-      border-radius: 12px;
-      padding: 20px;
+      background: var(--card-bg); border: 1px solid #333; border-radius: 12px; padding: 20px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
 
@@ -91,110 +58,67 @@
     label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-muted); }
 
     input {
-      width: 100%;
-      padding: 14px;
-      border-radius: 8px;
-      border: 1px solid #444;
-      background: #222;
-      color: #fff;
-      font-size: 1rem;
-      margin-bottom: 15px;
+      width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #444;
+      background: #222; color: #fff; font-size: 1rem; margin-bottom: 15px;
     }
 
-    .privacy-notice {
-      font-size: 0.75rem;
-      color: #888;
-      margin-bottom: 15px;
-      line-height: 1.3;
-    }
+    .privacy-notice { font-size: 0.75rem; color: #888; margin-bottom: 15px; line-height: 1.3; }
 
     button.btn-primary {
-      width: 100%;
-      padding: 15px;
-      background: var(--accent);
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 1.1rem;
-      cursor: pointer;
-      text-transform: uppercase;
-      transition: background 0.2s, opacity 0.2s;
+      width: 100%; padding: 15px; background: var(--accent); color: #000; border: none;
+      border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer;
+      text-transform: uppercase; transition: background 0.2s, opacity 0.2s;
     }
-
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .route-box {
-      background: #262626;
-      border-left: 4px solid var(--accent);
-      padding: 10px 15px;
-      margin: 15px 0;
-      border-radius: 0 8px 8px 0;
+      background: #262626; border-left: 4px solid var(--accent); padding: 10px 15px;
+      margin: 15px 0; border-radius: 0 8px 8px 0;
     }
+    .progress-bar { color: var(--warning); font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
 
-    .progress-bar {
-      color: var(--warning);
-      font-size: 0.9rem;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
-
-    .status-msg { margin-top: 10px; font-weight: bold; text-align: center; }
-    .error { color: #ef4444; font-size: 0.85rem; margin-bottom: 10px; word-break: break-word; }
+    .status-msg { margin-top: 10px; font-weight: bold; text-align: center; min-height: 1.3em; }
+    .error { color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; word-break: break-word; }
+    .status-msg.error { font-size: 1rem; }
     .success { color: var(--success); }
+    .warn-banner {
+      background: rgba(239, 68, 68, 0.12); border: 1px solid var(--danger); color: #fca5a5;
+      border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; line-height: 1.3;
+    }
 
     .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.1);
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border-left-color: var(--warning);
-      animation: spin 1s linear infinite;
-      margin: 20px auto;
+      border: 4px solid rgba(255, 255, 255, 0.1); width: 40px; height: 40px; border-radius: 50%;
+      border-left-color: var(--warning); animation: spin 1s linear infinite; margin: 20px auto;
     }
-
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.92);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-      z-index: 1000;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+      display: flex; justify-content: center; align-items: center; padding: 15px; z-index: 1000;
     }
-
     .modal-content {
-      background: #1a1a1a;
-      border: 1px solid var(--accent);
-      border-radius: 12px;
-      width: 100%;
-      max-width: 420px;
-      padding: 15px;
-      text-align: center;
+      background: #1a1a1a; border: 1px solid var(--accent); border-radius: 12px;
+      width: 100%; max-width: 420px; padding: 15px; text-align: center;
     }
-
-    #map {
-      width: 100%;
-      height: 320px;
-      border-radius: 8px;
-      border: 1px solid #444;
-      margin: 12px 0;
-    }
+    #map { width: 100%; height: 320px; border-radius: 8px; border: 1px solid #444; margin: 12px 0; }
 
     .white-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: #ffffff;
-      z-index: 2000;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: #000;
+      position: fixed; inset: 0; background: #ffffff; z-index: 2000;
+      display: flex; flex-direction: column; justify-content: center; align-items: center; color: #000;
     }
+
+    .btn-link {
+      background: none; border: none; color: var(--text-muted); text-decoration: underline;
+      font-size: 0.85rem; cursor: pointer; margin-top: 14px; padding: 6px;
+    }
+    .btn-secondary {
+      width: 100%; padding: 12px; background: #2a2a2a; color: #fff; border: 1px solid #444;
+      border-radius: 8px; font-weight: bold; font-size: 0.95rem; cursor: pointer; margin-top: 10px;
+    }
+    a.maps-link { display: inline-block; color: var(--accent); font-weight: bold; font-size: 0.9rem; margin: 6px 0 2px; }
+    .notice { background: rgba(234, 179, 8, 0.12); border: 1px solid var(--warning); color: #fde68a;
+      border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; line-height: 1.3; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   </style>
 </head>
 <body>
@@ -205,10 +129,14 @@
     <div id="timer-display" class="timer-badge">Tiempo: --:--</div>
   </header>
 
+  <div id="gps-warning" class="warn-banner hidden">
+    📍 Este móvil no comparte su ubicación. Activa el permiso de ubicación del navegador para que la organización pueda localizaros si hace falta.
+  </div>
+
   <div id="tools-bar" class="tools-bar hidden">
-    <button class="btn-tool" id="btn-torch" onclick="toggleTorch()">🔦 Linterna</button>
-    <button class="btn-tool" onclick="toggleMap(true)">🗺️ Mapa Real</button>
-    <button class="btn-tool" onclick="openAR()">👁️ Escanear RA</button>
+    <button type="button" class="btn-tool" id="btn-torch">🔦 Linterna</button>
+    <button type="button" class="btn-tool" id="btn-map">🗺️ Mapa Real</button>
+    <button type="button" class="btn-tool" id="btn-ar">👁️ Escanear RA</button>
   </div>
 
   <div id="screen-start" class="card">
@@ -216,35 +144,39 @@
     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0 15px 0;">
       Introduce los datos de tu equipo para comenzar.
     </p>
-    
+
+    <div id="lost-notice" class="notice hidden" style="margin-bottom: 15px;"></div>
+
     <label for="team-name">Nombre del Equipo:</label>
-    <input type="text" id="team-name" placeholder="Ej: Los Cazafantasmas" maxlength="30" autocomplete="off" autocorrect="off">
+    <input type="text" id="team-name" placeholder="Ej: Los Cazafantasmas" maxlength="30" autocomplete="off" autocorrect="off" enterkeyhint="next">
 
     <label for="team-members">Número de Participantes (mínimo 2, máximo 20):</label>
-    <input type="number" id="team-members" min="2" max="20" value="2" placeholder="2">
+    <input type="number" id="team-members" min="2" max="20" value="2" inputmode="numeric" placeholder="2" enterkeyhint="done">
 
     <p class="privacy-notice">
-      📍 <strong>Aviso de Privacidad:</strong> Al registrarte, permites el envío de la ubicación GPS de tu dispositivo durante la actividad únicamente para la gestión de seguridad y localización en el mapa por parte de la Organización.
+      📍 <strong>Aviso de Privacidad:</strong> Al registrarte, permites el envío de la ubicación GPS de tu dispositivo durante la actividad únicamente para la gestión de seguridad y localización en el mapa por parte de la Organización. La ubicación deja de enviarse cuando termináis la partida.
     </p>
 
-    <div id="register-error" class="error hidden"></div>
-    <button id="btn-start" class="btn-primary" onclick="registerTeam()">Registrar Equipo</button>
+    <div id="register-error" class="error hidden" role="alert"></div>
+    <button type="button" id="btn-start" class="btn-primary">Registrar Equipo</button>
   </div>
 
   <div id="screen-wait" class="card hidden" style="text-align: center;">
     <h2 style="color: var(--warning);">Equipo Registrado</h2>
-    <p id="wait-team-name" style="font-size: 1.3rem; font-weight: bold; margin: 10px 0; color: #fff;"></p>
-    
+    <p id="wait-team-name" style="font-size: 1.3rem; font-weight: bold; margin: 10px 0; color: #fff; word-break: break-word;"></p>
+
     <div class="spinner"></div>
 
     <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4;">
-      Acercaos a la mesa de control de la organización para recibir la salida oficial.
+      Acercaos a la mesa de control de la organización para recibir la salida oficial. Esta pantalla avisará sola cuando empecéis.
     </p>
+    <p id="wait-warning" class="error hidden" style="margin-top: 12px;"></p>
+    <button type="button" id="btn-cancel" class="btn-link">¿Te has equivocado de nombre? Cancelar registro</button>
   </div>
 
   <div id="screen-game" class="card hidden">
-    <h2 id="display-team-name" style="color: var(--accent);"></h2>
-    
+    <h2 id="display-team-name" style="color: var(--accent); word-break: break-word;"></h2>
+
     <div class="route-box">
       <div id="progress-indicator" class="progress-bar">Estación 1 de 4</div>
       <strong>Tu objetivo actual:</strong>
@@ -254,623 +186,603 @@
     <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;"></p>
 
     <label for="station-code" id="label-code">Palabra Clave de la Estación:</label>
-    <input type="text" id="station-code" placeholder="Introduce la palabra clave..." autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false">
-    
-    <button id="btn-validate" class="btn-primary" onclick="validateCode()">Validar Código</button>
-    <div id="game-status" class="status-msg"></div>
+    <input type="text" id="station-code" placeholder="Introduce la palabra clave..." autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
+
+    <button type="button" id="btn-validate" class="btn-primary">Validar Código</button>
+    <div id="game-status" class="status-msg" role="status" aria-live="polite"></div>
   </div>
 
   <div id="screen-end" class="card hidden" style="text-align: center;">
     <h2 style="color: var(--success);">¡Misión Completada!</h2>
     <p style="margin: 15px 0;">Has sellado la amenaza en Huércal de Almería.</p>
-    
+
     <div style="background: #222; padding: 15px; border-radius: 8px; margin: 15px 0;">
       <p style="color: var(--text-muted);">Tiempo total registrado:</p>
       <p id="final-time" style="font-size: 2rem; font-weight: bold; color: var(--accent);"></p>
     </div>
 
     <p style="font-size: 0.85rem; color: var(--text-muted);">
-      Tus datos han sido registrados automáticamente en la clasificación oficial.
+      Tu tiempo ya consta en la clasificación oficial.
     </p>
+    <button type="button" id="btn-new-team" class="btn-secondary">Registrar otro equipo en este móvil</button>
   </div>
 </div>
 
 <div id="modal-map" class="modal-overlay hidden">
   <div class="modal-content">
     <h3 style="color: var(--accent);">Mapa de Huércal de Almería</h3>
-    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Punto naranja: Tu objetivo actual. Punto azul: Tu ubicación.</p>
-    
-    <div id="map"></div>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Marcador: tu objetivo actual. Punto azul: tu ubicación.</p>
 
-    <button class="btn-primary" onclick="toggleMap(false)">Cerrar Mapa</button>
+    <div id="map"></div>
+    <p id="map-offline" class="error hidden">El mapa necesita conexión a internet.</p>
+    <a id="map-link" class="maps-link" href="#" target="_blank" rel="noopener">Abrir el objetivo en Google Maps ↗</a>
+
+    <button type="button" class="btn-primary" id="btn-close-map" style="margin-top: 10px;">Cerrar Mapa</button>
   </div>
 </div>
 
-<div id="modal-white-screen" class="white-overlay hidden" onclick="toggleWhiteOverlay(false)">
+<div id="modal-white-screen" class="white-overlay hidden">
   <p style="font-weight: bold; font-size: 1.2rem;">🔦 PANTALLA LINTERNA</p>
-  <p style="font-size: 0.85rem; margin-top: 5px;">Haz clic en cualquier lugar para cerrar</p>
+  <p style="font-size: 0.85rem; margin-top: 5px;">Toca en cualquier lugar para cerrar</p>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" async></script>
 
 <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
+(() => {
+  'use strict';
 
-  let startTime = null;
-  let timerInterval = null;
-  let isPollingActive = false;
-  let lastGpsSentTime = 0;
-  let teamNameGlobal = "";
+  const CFG = window.ESCAPE_CONFIG;
+  if (!CFG) {
+    document.body.innerHTML = '<p style="padding:24px;color:#ef4444;font-family:sans-serif">No se ha podido cargar config.js. Comprueba que está subido junto a index.html.</p>';
+    return;
+  }
+  const $ = (id) => document.getElementById(id);
+  const STATIONS = CFG.STATIONS;
+  const BASE = CFG.BASE;
+  const FINAL_STEP = 4;          // pasos 0-3: estaciones; 4: de vuelta a la base (clave final)
 
-  let currentStepIndex = 0;
-  let teamRouteIndexes = [];
+  const POLL_MS = 7000;          // "¿ya nos han dado la salida?" (con algo de azar para no pedir todos a la vez)
+  const GPS_SEND_MS = 15000;     // como mucho una ubicación cada 15 s
+  const KEY = 'sombra_v2';       // sesión del equipo
+  const KEY_PENDING = 'sombra_v2_pending';   // registro a medias (para poder reintentar con el mismo token)
 
-  let torchTrack = null;
-  let isTorchOn = false;
+  // ---------------------------------------------------------------------------------------------
+  // Estado. El servidor es la única fuente de verdad: aquí solo hay una copia para no perderla al recargar.
+  // S = { team, cid, route:[4], step, state:'wait'|'game'|'end', startMs (hora del servidor), offset, finalTime }
+  // ---------------------------------------------------------------------------------------------
+  let S = null;
+  let timerId = null, pollTimer = null, lockTimer = null;
+  let busy = false, lockUntil = 0;
+  let gpsWatchId = null, lastGpsSent = 0, curLat = null, curLng = null;
+  let leafletMap = null, stationMarker = null, userMarker = null;
+  let torchStream = null, torchOn = false;
+  let wakeLock = null;
 
-  let leafletMap = null;
-  let stationMarker = null;
-  let userLocationMarker = null;
-  let currentUserLat = null;
-  let currentUserLng = null;
-
-  // CONFIGURACIÓN DE LAS 4 ESTACIONES
-  const allStations = [
-    { 
-      id: 0, 
-      title: "Estación 1: Centro Social 'José Guirado'", 
-      name: "Centro Social José Guirado", 
-      code: "AQUELARRE", 
-      lat: 36.8861492, 
-      lng: -2.4364976,
-      desc: "Entra en el edificio en penumbra. Escucha atentamente la psicofonía que resuena en el ambiente para descubrir la clave."
-    },
-    { 
-      id: 1, 
-      title: "Estación 2: Túnel de las Vías del Tren", 
-      name: "Túnel Vías del Tren", 
-      code: "8492", 
-      lat: 36.884500, 
-      lng: -2.439200,
-      desc: "Cruza el túnel con cuidado. Usa el botón 'Escanear RA' para revisar los símbolos de las paredes. ¡Huye de la motosierra y encuentra el código numérico verdadero!"
-    },
-    { 
-      id: 2, 
-      title: "Estación 3: Calle Oscura (Paso Sombrío)", 
-      name: "Calle Oscura", 
-      code: "371",
-      lat: 36.882500, 
-      lng: -2.438200,
-      desc: "El actor te señalará la primera cifra. Encuentra las dos cifras ocultas en la calle con tu linterna y deduce el orden correcto. Al acertar, el actor te dirá la última cifra misteriosa según la hora exacta."
-    },
-    { 
-      id: 3, 
-      title: "Estación 4: Centro Cultural 'Cortijo Moreno'", 
-      name: "Cortijo Moreno", 
-      code: "SANTOS", 
-      lat: 36.8836232, 
-      lng: -2.4376785,
-      desc: "Visita a la Pitonisa y consulta su bola de cristal. Escanea el escudo con la cámara RA para invocar al espectro que revelará la clave."
-    }
-  ];
-
-  const baseStation = {
-    title: "🏁 Punto de Inicio: Mesa de Control (Cortijo Moreno)",
-    code: "FIN2026",
-    lat: 36.8836232,
-    lng: -2.4376785
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sin almacenamiento: la partida sigue, solo no se recuerda al recargar */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* nada */ } }
   };
 
-  // FILTRO MEJORADO DE PALABRAS PROHIBIDAS (CON LÍMITES DE PALABRA Y NORMALIZACIÓN)
-  const badWordsList = ["puta", "puto", "mierda", "cabron", "cabrona", "hostia", "joder", "follar", "cojones", "gilipollas"];
-
-  function normalizeText(str) {
-    return String(str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  function saveSession() { if (S) store.set(KEY, JSON.stringify(S)); }
+  function loadSession() {
+    try {
+      const s = JSON.parse(store.get(KEY) || 'null');
+      if (s && typeof s.team === 'string' && /^[A-Za-z][A-Za-z0-9_-]{7,63}$/.test(s.cid) &&
+          Array.isArray(s.route) && s.route.length === 4 && ['wait', 'game', 'end'].includes(s.state)) {
+        s.step = Math.min(5, Math.max(0, parseInt(s.step, 10) || 0));
+        s.startMs = Number(s.startMs) || 0;
+        s.offset = Number(s.offset) || 0;
+        return s;
+      }
+    } catch (e) { /* sesión corrupta: se ignora */ }
+    return null;
   }
 
-  function validateInputName(name) {
-    const regex = /^[a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ\s]{3,30}$/;
-    if (!regex.test(name)) {
-      return "El nombre debe contener entre 3 y 30 caracteres (solo letras y números, sin símbolos).";
-    }
-    
-    const cleanStr = normalizeText(name);
-    for (let word of badWordsList) {
-      const pattern = new RegExp(`\\b${word}\\b`, 'i');
-      if (pattern.test(cleanStr)) {
-        return "Ese nombre contiene palabras no permitidas. Por favor, elige otro.";
+  function escapeHtml(t) {
+    return String(t ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+  }
+
+  function newToken() {
+    const a = new Uint8Array(16);
+    crypto.getRandomValues(a);
+    return 't' + Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');   // empieza por letra: nunca se confunde con un número
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Red
+  // ---------------------------------------------------------------------------------------------
+  async function api(params, timeoutMs) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs || 12000);
+    try {
+      const t0 = Date.now();
+      const res = await fetch(`${CFG.WEB_APP_URL}?${new URLSearchParams(params)}`, { signal: controller.signal });
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch (e) { throw new Error('BAD_RESPONSE'); }
+      if (S && data && typeof data.now === 'number') {          // reloj del servidor: base del cronómetro
+        S.offset = data.now - (t0 + Date.now()) / 2;
       }
+      return data;
+    } finally { clearTimeout(id); }
+  }
+  const auth = (extra) => Object.assign({ teamName: S.team, cid: S.cid }, extra);
+  const serverNow = () => Date.now() + (S ? S.offset : 0);
+
+  // ---------------------------------------------------------------------------------------------
+  // Pantallas
+  // ---------------------------------------------------------------------------------------------
+  function showScreen(name) {
+    ['start', 'wait', 'game', 'end'].forEach((n) => $('screen-' + n).classList.toggle('hidden', n !== name));
+    $('tools-bar').classList.toggle('hidden', !(name === 'wait' || name === 'game'));
+    if (name !== 'game') $('timer-display').textContent = name === 'end' ? 'Misión cumplida' : 'Tiempo: --:--';
+  }
+
+  function setGameStatus(text, cls) {
+    const el = $('game-status');
+    el.className = 'status-msg' + (cls ? ' ' + cls : '');
+    el.textContent = text;
+  }
+
+  function currentTarget() { return S.step < FINAL_STEP ? STATIONS[S.route[S.step]] : BASE; }
+
+  function updateGameUI() {
+    const target = currentTarget();
+    const final = S.step >= FINAL_STEP;
+    $('display-team-name').textContent = S.team;
+    $('progress-indicator').textContent = final ? '🏁 FASE FINAL' : `Estación ${S.step + 1} de 4`;
+    $('progress-indicator').style.color = final ? 'var(--success)' : '';
+    $('assigned-station').textContent = target.title;
+    $('station-instructions').textContent = final
+      ? '¡Has completado las 4 estaciones! Regresa de inmediato al Cortijo Moreno con la Organización para sellar tu victoria.'
+      : target.desc;
+    $('label-code').textContent = final ? 'Código Final de la Organización:' : 'Palabra Clave de la Estación:';
+    $('station-code').placeholder = final ? 'Introduce el código final...' : 'Introduce la palabra clave...';
+    if (leafletMap) renderTargetOnMap();
+  }
+
+  function enterWait() {
+    S.state = 'wait'; saveSession();
+    $('wait-team-name').textContent = S.team;
+    $('wait-warning').classList.add('hidden');
+    showScreen('wait');
+    stopTimer();
+    startGPS(); keepAwake(true);
+    schedulePoll(1500);
+  }
+
+  function enterGame() {
+    S.state = 'game'; saveSession();
+    clearTimeout(pollTimer);
+    showScreen('game');
+    updateGameUI();
+    startTimer();
+    startGPS(); keepAwake(true);
+  }
+
+  function enterEnd(finalTime) {
+    S.state = 'end';
+    if (finalTime) S.finalTime = finalTime;
+    saveSession();
+    stopTimer(); clearTimeout(pollTimer); clearInterval(lockTimer);
+    stopGPS(); keepAwake(false);
+    if (torchOn) toggleTorch();
+    toggleMap(false);
+    $('final-time').textContent = S.finalTime || '--';
+    showScreen('end');
+  }
+
+  function clearSession(notice) {
+    stopTimer(); clearTimeout(pollTimer); clearInterval(lockTimer);
+    stopGPS(); keepAwake(false);
+    if (torchOn) toggleTorch();
+    toggleMap(false);
+    const oldName = S ? S.team : '';
+    S = null; store.del(KEY); store.del(KEY_PENDING);
+    lockUntil = 0; curLat = curLng = null;
+    $('btn-start').disabled = false; $('btn-start').textContent = 'Registrar Equipo';
+    $('btn-validate').disabled = false; setGameStatus('', '');
+    $('team-name').value = oldName;
+    const n = $('lost-notice');
+    n.textContent = notice || ''; n.classList.toggle('hidden', !notice);
+    $('register-error').classList.add('hidden');
+    showScreen('start');
+  }
+
+  // El servidor dice que ese equipo/token ya no existe (partida reiniciada, fila borrada...)
+  function sessionLost() {
+    clearSession('La organización no encuentra a vuestro equipo (puede que se haya reiniciado la partida). Registraos de nuevo con el mismo nombre.');
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Registro
+  // ---------------------------------------------------------------------------------------------
+  function validateName(name) {
+    if (!/^[A-Za-z0-9ÁÉÍÓÚÜáéíóúüÑñ ]{3,30}$/.test(name)) {
+      return 'El nombre debe tener entre 3 y 30 caracteres (solo letras, números y espacios, sin símbolos).';
     }
     return null;
   }
 
-  // FETCH CON TIMEOUT RESILIENTE
-  async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(id);
-      return response;
-    } catch (err) {
-      clearTimeout(id);
-      throw err;
-    }
-  }
-
-  // COLA DE REINTENTOS PARA ENVÍOS OFFLINE EN ZONAS CON POCA COBERTA
-  async function sendSyncData(actionUrl) {
-    try {
-      await fetch(actionUrl, { mode: 'no-cors' });
-    } catch (err) {
-      console.warn("Fallo de red en sincronización. Se guardará para reintentar:", actionUrl);
-      let pending = JSON.parse(localStorage.getItem('pending_sync') || "[]");
-      pending.push(actionUrl);
-      localStorage.setItem('pending_sync', JSON.stringify(pending));
-    }
-  }
-
-  function flushPendingSync() {
-    let pending = JSON.parse(localStorage.getItem('pending_sync') || "[]");
-    if (pending.length === 0) return;
-
-    let remaining = [];
-    pending.forEach(url => {
-      fetch(url, { mode: 'no-cors' }).catch(() => remaining.push(url));
-    });
-    localStorage.setItem('pending_sync', JSON.stringify(remaining));
-  }
-
-  setInterval(flushPendingSync, 12000);
-
-  window.addEventListener('DOMContentLoaded', () => {
-    restoreSession();
-    initGPSWatch();
-  });
-
-  function openAR() {
-    window.location.href = 'ar-test.html';
-  }
-
-  function saveSession(state) {
-    try {
-      localStorage.setItem('escape_state', state);
-      localStorage.setItem('escape_team', teamNameGlobal);
-      localStorage.setItem('escape_route', JSON.stringify(teamRouteIndexes));
-      localStorage.setItem('escape_step', currentStepIndex);
-      if (startTime) localStorage.setItem('escape_startTime', startTime);
-    } catch (e) {
-      console.warn("No se pudo guardar la sesión en LocalStorage:", e);
-    }
-  }
-
-  function restoreSession() {
-    try {
-      const savedState = localStorage.getItem('escape_state');
-      if (!savedState) return;
-
-      teamNameGlobal = localStorage.getItem('escape_team') || "";
-      const savedRoute = localStorage.getItem('escape_route');
-      if (savedRoute) teamRouteIndexes = JSON.parse(savedRoute);
-      currentStepIndex = parseInt(localStorage.getItem('escape_step') || "0", 10);
-      const savedStartTime = localStorage.getItem('escape_startTime');
-
-      if (savedState === 'wait') {
-        document.getElementById('screen-start').classList.add('hidden');
-        document.getElementById('screen-wait').classList.remove('hidden');
-        document.getElementById('tools-bar').classList.remove('hidden');
-        document.getElementById('wait-team-name').innerText = teamNameGlobal;
-
-        startApprovalPolling();
-      } else if (savedState === 'game') {
-        startTime = parseInt(savedStartTime, 10) || Date.now();
-        document.getElementById('screen-start').classList.add('hidden');
-        document.getElementById('screen-game').classList.remove('hidden');
-        document.getElementById('tools-bar').classList.remove('hidden');
-        document.getElementById('display-team-name').innerText = teamNameGlobal;
-
-        updateGameUI();
-        startTimer();
-      } else if (savedState === 'end') {
-        document.getElementById('screen-start').classList.add('hidden');
-        document.getElementById('screen-wait').classList.add('hidden');
-        document.getElementById('screen-game').classList.add('hidden');
-        document.getElementById('tools-bar').classList.add('hidden');
-        document.getElementById('screen-end').classList.remove('hidden');
-      }
-    } catch (err) {
-      console.error("Error al restaurar sesión:", err);
-    }
-  }
-
-  function initGPSWatch() {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          currentUserLat = pos.coords.latitude;
-          currentUserLng = pos.coords.longitude;
-          maybeSendLocation(currentUserLat, currentUserLng);
-        },
-        (err) => console.warn("GPS no disponible inicialmente:", err),
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-
-      navigator.geolocation.watchPosition(
-        (pos) => {
-          currentUserLat = pos.coords.latitude;
-          currentUserLng = pos.coords.longitude;
-
-          if (leafletMap) {
-            updateUserMarker(currentUserLat, currentUserLng);
-          }
-          maybeSendLocation(currentUserLat, currentUserLng);
-        },
-        (err) => console.warn("Sombra de GPS:", err),
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
-      );
-    }
-  }
-
-  // LIMITA EL ENVÍO DE UBICACIÓN COMO MÁXIMO CADA 15 SEGUNDOS Y SOLO SI LA PESTAÑA ESTÁ ACTIVA
-  function maybeSendLocation(lat, lng) {
-    if (document.hidden || !lat || !lng || !teamNameGlobal) return;
-    const now = Date.now();
-    if (now - lastGpsSentTime >= 15000) {
-      lastGpsSentTime = now;
-      sendSyncData(`${WEB_APP_URL}?action=updateLocation&teamName=${encodeURIComponent(teamNameGlobal)}&lat=${lat}&lng=${lng}`);
-    }
-  }
-
-  function updateUserMarker(lat, lng) {
-    if (!leafletMap) return;
-    if (!userLocationMarker) {
-      userLocationMarker = L.circleMarker([lat, lng], {
-        radius: 10,
-        fillColor: "#3b82f6",
-        color: "#ffffff",
-        weight: 3,
-        opacity: 1,
-        fillOpacity: 0.9
-      }).addTo(leafletMap);
-
-      userLocationMarker.bindPopup("<b>🔵 Tu ubicación actual</b>");
-    } else {
-      userLocationMarker.setLatLng([lat, lng]);
-    }
+  function showRegisterError(msg) {
+    const e = $('register-error');
+    e.textContent = msg; e.classList.remove('hidden');
   }
 
   async function registerTeam() {
-    const teamInput = document.getElementById('team-name').value.trim();
-    const membersInput = parseInt(document.getElementById('team-members').value, 10);
-    const errorDiv = document.getElementById('register-error');
-    const btn = document.getElementById('btn-start');
+    if (busy) return;
+    const btn = $('btn-start');
+    const name = $('team-name').value.normalize('NFC').replace(/\s+/g, ' ').trim();
+    const members = parseInt($('team-members').value, 10);
+    $('register-error').classList.add('hidden');
 
-    errorDiv.classList.add('hidden');
+    const bad = validateName(name);
+    if (bad) { showRegisterError(bad); return; }
+    if (!(members >= 2 && members <= 20)) { showRegisterError('El número de participantes debe estar entre 2 y 20.'); return; }
 
-    const validationError = validateInputName(teamInput);
-    if (validationError) {
-      errorDiv.innerText = validationError;
-      errorDiv.classList.remove('hidden');
-      return;
-    }
+    // Mismo token si es un reintento con el mismo nombre: así un registro que "se perdió" se recupera en vez de dar "duplicado".
+    let pend = null;
+    try { pend = JSON.parse(store.get(KEY_PENDING) || 'null'); } catch (e) { /* nada */ }
+    if (!pend || typeof pend.name !== 'string' || pend.name.toLowerCase() !== name.toLowerCase() || !pend.cid) pend = { name, cid: newToken() };
+    store.set(KEY_PENDING, JSON.stringify(pend));
 
-    if (isNaN(membersInput) || membersInput < 2 || membersInput > 20) {
-      errorDiv.innerText = "El número de participantes debe estar entre 2 y 20.";
-      errorDiv.classList.remove('hidden');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = "REGISTRANDO EQUIPO...";
-
-    teamNameGlobal = teamInput;
-
-    teamRouteIndexes = [0, 1, 2, 3];
-    for (let i = teamRouteIndexes.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [teamRouteIndexes[i], teamRouteIndexes[j]] = [teamRouteIndexes[j], teamRouteIndexes[i]];
-    }
-    currentStepIndex = 0;
-
-    const firstStationObj = allStations[teamRouteIndexes[0]];
-    const initialProgressText = `Estación 1/4 (${firstStationObj.name})`;
-
+    busy = true; btn.disabled = true; btn.textContent = 'REGISTRANDO EQUIPO...';
+    S = { team: name, cid: pend.cid, route: [0, 1, 2, 3], step: 0, state: 'wait', startMs: 0, offset: 0 };
+    let registered = false;
     try {
-      const requestUrl = `${WEB_APP_URL}?action=register&teamName=${encodeURIComponent(teamNameGlobal)}&participantCount=${membersInput}&assignedStation=${encodeURIComponent(initialProgressText)}`;
-      const response = await fetchWithTimeout(requestUrl, {}, 18000);
-      const textResponse = await response.text();
-      let data = {};
-      
-      try { data = JSON.parse(textResponse); } catch(e) { data = { status: "OK" }; }
+      const d = await api({ action: 'register', teamName: name, participantCount: members, cid: pend.cid }, 20000);
+      switch (d.status) {
+        case 'OK':
+          if (Array.isArray(d.route) && d.route.length === 4) S.route = d.route;
+          S.step = d.step || 0;
+          store.del(KEY_PENDING);
+          registered = true;
+          busy = false;
+          await syncStatus(true);
+          return;
+        case 'DUPLICATE': showRegisterError('¡Ese nombre de equipo ya existe! Prueba a cambiar el nombre o añadir una cifra.'); break;
+        case 'INVALID_NAME': showRegisterError('El nombre no es válido. Usa entre 3 y 30 letras, números o espacios.'); break;
+        case 'BAD_WORD': showRegisterError('Ese nombre contiene palabras no permitidas. Por favor, elige otro.'); break;
+        case 'INVALID_COUNT': showRegisterError('El número de participantes debe estar entre 2 y 20.'); break;
+        case 'BUSY': showRegisterError('Hay muchos equipos registrándose a la vez. Espera unos segundos y vuelve a pulsar.'); break;
+        default: showRegisterError('El servidor no ha podido registrar al equipo. Inténtalo de nuevo en un momento.');
+      }
+    } catch (err) {
+      showRegisterError('Sin conexión con el servidor. Vuelve a pulsar "Registrar Equipo": si el registro llegó a hacerse, se recuperará.');
+    } finally {
+      busy = false;
+      if (!registered) {       // no hay sesión hasta que el registro salga bien
+        S = null;
+        btn.disabled = false; btn.textContent = 'Registrar Equipo';
+      }
+    }
+  }
 
-      if (data.status === "DUPLICATE") {
-        errorDiv.innerText = "¡Ese nombre de equipo ya existe! Prueba a cambiar el nombre o añadir una cifra.";
-        errorDiv.classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = "REGISTRAR EQUIPO";
+  async function cancelRegistration() {
+    if (!S || busy) return;
+    if (!confirm('¿Cancelar el registro de "' + S.team + '"? Podrás registrarte de nuevo con otro nombre.')) return;
+    busy = true;
+    try {
+      const d = await api({ action: 'cancel', teamName: S.team, cid: S.cid });
+      busy = false;
+      if (d.status === 'OK' || d.status === 'NOT_FOUND' || d.status === 'BAD_TOKEN') { clearSession(''); $('team-name').value = ''; return; }
+      if (d.status === 'NOT_ALLOWED') { await syncStatus(); return; }     // la organización ya ha dado la salida
+      showWaitWarning('No se pudo cancelar ahora. Inténtalo de nuevo.');
+    } catch (e) {
+      busy = false;
+      showWaitWarning('Sin conexión: no se pudo cancelar. Inténtalo de nuevo.');
+    }
+  }
+
+  function showWaitWarning(msg) { const w = $('wait-warning'); w.textContent = msg; w.classList.remove('hidden'); }
+
+  // ---------------------------------------------------------------------------------------------
+  // Sincronización con el servidor (estado, salida, paso)
+  // ---------------------------------------------------------------------------------------------
+  function schedulePoll(ms) {
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(pollLoop, ms !== undefined ? ms : POLL_MS + Math.random() * 2000);
+  }
+
+  async function pollLoop() {
+    if (!S || S.state !== 'wait') return;
+    if (!document.hidden) await syncStatus();
+    if (S && S.state === 'wait') schedulePoll();
+  }
+
+  /** Pregunta al servidor en qué punto está el equipo y coloca la pantalla que corresponde. */
+  async function syncStatus(firstTime) {
+    if (!S) return;
+    try {
+      const d = await api({ action: 'checkStatus', teamName: S.team, cid: S.cid }, 9000);
+      if (!S) return;
+      if (d.status === 'NOT_FOUND' || d.status === 'BAD_TOKEN') { sessionLost(); return; }
+      if (d.status !== 'OK') throw new Error(d.status);
+      $('wait-warning').classList.add('hidden');
+      if (Array.isArray(d.route) && d.route.length === 4) S.route = d.route;
+      S.step = d.step || 0;
+      if (d.state === 'Finalizado') { enterEnd(d.totalTime); return; }
+      if (d.state === 'En curso' && d.startMs) {
+        S.startMs = d.startMs;
+        if (S.state !== 'game' || firstTime) enterGame(); else { saveSession(); updateGameUI(); }
         return;
       }
-
-      saveSession('wait');
-
-      if (currentUserLat && currentUserLng) {
-        maybeSendLocation(currentUserLat, currentUserLng);
-      }
-
-      document.getElementById('screen-start').classList.add('hidden');
-      document.getElementById('screen-wait').classList.remove('hidden');
-      document.getElementById('tools-bar').classList.remove('hidden');
-      document.getElementById('wait-team-name').innerText = teamNameGlobal;
-
-      startApprovalPolling();
-
+      if (S.state !== 'wait' || firstTime) enterWait(); else saveSession();     // sigue Pendiente
     } catch (err) {
-      errorDiv.innerText = "Error de red o servidor ocupado. Si ya pulsaste, acércate a la mesa de control.";
-      errorDiv.classList.remove('hidden');
-      btn.disabled = false;
-      btn.innerText = "REGISTRAR EQUIPO";
+      if (firstTime) { enterWait(); showWaitWarning('Sin conexión con el servidor: se reintentará solo.'); }
+      else if (S && S.state === 'wait') showWaitWarning('Sin conexión con el servidor: se reintentará solo.');
     }
   }
 
-  // POLLING RECURSIVO (EVITA COLAPSO Y ACUMULACIÓN DE PETICIONES)
-  function startApprovalPolling() {
-    isPollingActive = true;
-    pollApprovalLoop();
-  }
-
-  async function pollApprovalLoop() {
-    if (!isPollingActive || document.getElementById('screen-wait').classList.contains('hidden')) return;
-
-    if (!document.hidden) {
-      try {
-        const response = await fetchWithTimeout(`${WEB_APP_URL}?action=checkStatus&teamName=${encodeURIComponent(teamNameGlobal)}`, {}, 6000);
-        const data = await response.json();
-
-        if (data.status === "En curso") {
-          isPollingActive = false;
-          
-          startTime = Date.now();
-          saveSession('game');
-
-          document.getElementById('screen-wait').classList.add('hidden');
-          document.getElementById('screen-game').classList.remove('hidden');
-          document.getElementById('tools-bar').classList.remove('hidden');
-          document.getElementById('display-team-name').innerText = teamNameGlobal;
-
-          updateGameUI();
-          startTimer();
-          return;
-        }
-      } catch (err) {
-        // Ignorar fallos de red esporádicos en el bucle
-      }
-    }
-
-    // Espera 5 segundos tras finalizar la petición antes de hacer la siguiente
-    setTimeout(pollApprovalLoop, 5000);
-  }
-
-  function getCurrentTarget() {
-    if (currentStepIndex < 4) {
-      const stationId = teamRouteIndexes[currentStepIndex];
-      return allStations[stationId];
-    } else {
-      return baseStation;
-    }
-  }
-
-  function updateGameUI() {
-    const target = getCurrentTarget();
-
-    if (currentStepIndex < 4) {
-      document.getElementById('progress-indicator').innerText = `Estación ${currentStepIndex + 1} de 4`;
-      document.getElementById('assigned-station').innerText = target.title;
-      document.getElementById('station-instructions').innerText = target.desc;
-      document.getElementById('label-code').innerText = "Palabra Clave de la Estación:";
-    } else {
-      document.getElementById('progress-indicator').innerText = "🏁 FASE FINAL";
-      document.getElementById('progress-indicator').style.color = "var(--success)";
-      document.getElementById('assigned-station').innerText = target.title;
-      document.getElementById('station-instructions').innerText = "¡Has completado las 4 estaciones! Regresa de inmediato al Cortijo Moreno con la Organización para sellar tu victoria.";
-      document.getElementById('label-code').innerText = "Código Final de la Organización:";
-    }
-
-    if (leafletMap) {
-      renderTargetOnMap();
-    }
-  }
-
+  // ---------------------------------------------------------------------------------------------
+  // Cronómetro: siempre sobre la hora del servidor (no se desvía si el móvil tiene el reloj mal)
+  // ---------------------------------------------------------------------------------------------
   function startTimer() {
-    if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
-      const seconds = String(elapsed % 60).padStart(2, '0');
-      document.getElementById('timer-display').innerText = `Tiempo: ${minutes}:${seconds}`;
-    }, 1000);
+    stopTimer();
+    const tick = () => {
+      if (!S) return;
+      const elapsed = Math.max(0, Math.floor((serverNow() - S.startMs) / 1000));
+      $('timer-display').textContent = `Tiempo: ${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+    };
+    tick();
+    timerId = setInterval(tick, 1000);
+  }
+  function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null; } }
+
+  // ---------------------------------------------------------------------------------------------
+  // Validación de claves (siempre en el servidor)
+  // ---------------------------------------------------------------------------------------------
+  function startLockCountdown(seconds) {
+    clearInterval(lockTimer);
+    lockUntil = Date.now() + seconds * 1000;
+    const btn = $('btn-validate');
+    const tick = () => {
+      const left = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (left <= 0) {
+        clearInterval(lockTimer); lockUntil = 0; btn.disabled = false;
+        setGameStatus('Ya podéis volver a intentarlo.', '');
+        return;
+      }
+      btn.disabled = true;
+      setGameStatus(`Demasiados intentos fallidos. Esperad ${left} s antes de probar otra vez.`, 'error');
+    };
+    tick();
+    lockTimer = setInterval(tick, 1000);
   }
 
   async function validateCode() {
-    const inputField = document.getElementById('station-code');
-    const input = inputField.value.trim().toUpperCase();
-    const status = document.getElementById('game-status');
-    const target = getCurrentTarget();
+    if (busy || !S || S.state !== 'game' || lockUntil > Date.now()) return;
+    const input = $('station-code');
+    const code = input.value.trim();
+    if (!code) { setGameStatus('Escribe el código primero.', 'error'); return; }
 
-    let isCorrect = false;
-
-    if (target.id === 2) { 
-      const fixedPrefix = target.code; // "371"
-
-      const now = new Date();
-      const currentMinutes = now.getMinutes();
-      const currentMinDigit = currentMinutes % 10;
-
-      const prevMinutes = (currentMinutes - 1 + 60) % 60;
-      const prevMinDigit = prevMinutes % 10;
-
-      const expectedCodeCurrent = fixedPrefix + currentMinDigit;
-      const expectedCodePrev = fixedPrefix + prevMinDigit;
-
-      if (input === expectedCodeCurrent || input === expectedCodePrev) {
-        isCorrect = true;
-      }
-    } else {
-      if (input === target.code) {
-        isCorrect = true;
-      }
-    }
-
-    if (isCorrect) {
-      status.className = "status-msg success";
-      status.innerText = "¡Código Correcto!";
-      inputField.value = "";
-
-      currentStepIndex++;
-
-      let progressText = "";
-      if (currentStepIndex < 4) {
-        const nextStationObj = allStations[teamRouteIndexes[currentStepIndex]];
-        progressText = `Estación ${currentStepIndex + 1}/4 (${nextStationObj.name})`;
-      } else {
-        progressText = "De regreso a Base";
-      }
-
-      sendSyncData(`${WEB_APP_URL}?action=updateProgress&teamName=${encodeURIComponent(teamNameGlobal)}&progress=${encodeURIComponent(progressText)}`);
-
-      saveSession('game');
-
-      setTimeout(() => {
-        status.innerText = "";
-        if (currentStepIndex <= 4) {
+    busy = true; $('btn-validate').disabled = true;
+    setGameStatus('Comprobando…', '');
+    let keepDisabled = false;
+    try {
+      const d = await api(auth({ action: 'validate', code, paso: S.step }), 15000);
+      if (!S) return;
+      switch (d.status) {
+        case 'OK':
+          S.step = d.step; saveSession();
+          input.value = '';
+          setGameStatus('¡Código Correcto!', 'success');
+          setTimeout(() => { if (S && S.state === 'game') { setGameStatus('', ''); updateGameUI(); } }, 700);
+          break;
+        case 'FINISHED':
+          input.value = '';
+          enterEnd(d.totalTime);
+          break;
+        case 'WRONG':
+          if (d.retry > 0) { startLockCountdown(d.retry); keepDisabled = true; }
+          else setGameStatus(('Código incorrecto. ' + (d.left > 0 ? `Os quedan ${d.left} intento${d.left === 1 ? '' : 's'} antes de una pausa.` : '')).trim(), 'error');
+          break;
+        case 'LOCKED':
+          startLockCountdown(d.retry || 30); keepDisabled = true;
+          break;
+        case 'STEP_MISMATCH':
+          S.step = d.step; if (Array.isArray(d.route)) S.route = d.route; saveSession();
+          input.value = '';
           updateGameUI();
-        }
-        if (currentStepIndex > 4) {
-          finishGame();
-        }
-      }, 600);
-
-    } else {
-      status.className = "status-msg error";
-      status.innerText = "Código incorrecto. Inténtalo de nuevo.";
+          setGameStatus('Vuestra estación se ha actualizado. Revisad el objetivo y probad de nuevo.', 'error');
+          break;
+        case 'NOT_STARTED':
+          setGameStatus('', '');
+          busy = false;
+          await syncStatus();
+          break;
+        case 'NOT_FOUND': case 'BAD_TOKEN':
+          sessionLost(); return;
+        case 'BUSY':
+          setGameStatus('El servidor está ocupado. Probad otra vez en unos segundos.', 'error'); break;
+        default:
+          setGameStatus('Error del servidor. Probad otra vez.', 'error');
+      }
+    } catch (err) {
+      setGameStatus('Sin conexión con la organización. Vuestro código sigue escrito: pulsad de nuevo cuando tengáis cobertura.', 'error');
+    } finally {
+      busy = false;
+      if (!keepDisabled && S && lockUntil <= Date.now()) $('btn-validate').disabled = false;
     }
   }
 
-  function finishGame() {
-    clearInterval(timerInterval);
-    document.getElementById('btn-validate').disabled = true;
-
-    if (isTorchOn) toggleTorch();
-    toggleMap(false);
-
-    saveSession('end');
-
-    const d = new Date();
-    const endHourFormatted = d.toLocaleTimeString('es-ES', { hour12: false });
-    const totalSeconds = Math.floor((Date.now() - startTime) / 1000);
-    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
-    const seconds = String(totalSeconds % 60).padStart(2, '0');
-    const timeFormatted = `${minutes}m ${seconds}s`;
-
-    sendSyncData(`${WEB_APP_URL}?action=finish&teamName=${encodeURIComponent(teamNameGlobal)}&endTime=${encodeURIComponent(endHourFormatted)}&totalTime=${encodeURIComponent(timeFormatted)}`);
-
-    document.getElementById('screen-game').classList.add('hidden');
-    document.getElementById('tools-bar').classList.add('hidden');
-    document.getElementById('screen-end').classList.remove('hidden');
-    document.getElementById('final-time').innerText = timeFormatted;
+  // ---------------------------------------------------------------------------------------------
+  // GPS: empieza al registrarse (el aviso de privacidad ya está a la vista) y se apaga al terminar
+  // ---------------------------------------------------------------------------------------------
+  function startGPS() {
+    if (!('geolocation' in navigator) || gpsWatchId !== null) return;
+    gpsWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        $('gps-warning').classList.add('hidden');
+        curLat = pos.coords.latitude; curLng = pos.coords.longitude;
+        if (leafletMap) updateUserMarker(curLat, curLng);
+        maybeSendLocation();
+      },
+      (err) => { if (err.code === 1) $('gps-warning').classList.remove('hidden'); },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+    );
   }
+  function stopGPS() {
+    if (gpsWatchId !== null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
+  }
+  function maybeSendLocation() {
+    if (document.hidden || !S || S.state === 'end' || curLat === null) return;
+    const now = Date.now();
+    if (now - lastGpsSent < GPS_SEND_MS) return;
+    lastGpsSent = now;
+    api(auth({ action: 'updateLocation', lat: curLat, lng: curLng }), 10000).then((d) => {
+      if (d && (d.status === 'NOT_FOUND' || d.status === 'BAD_TOKEN')) sessionLost();
+    }).catch(() => { /* una ubicación atrasada no sirve de nada: se envía la siguiente */ });
+  }
+
+  // Mantiene la pantalla encendida durante la partida (si el navegador lo permite)
+  async function keepAwake(on) {
+    try {
+      if (on && 'wakeLock' in navigator && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } else if (!on && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+    } catch (e) { wakeLock = null; }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Mapa (Leaflet se carga desde internet; sin cobertura se ofrece el enlace a Google Maps)
+  // ---------------------------------------------------------------------------------------------
+  function mapsUrl(t) { return `https://www.google.com/maps/search/?api=1&query=${t.lat},${t.lng}`; }
 
   function initMap() {
     leafletMap = L.map('map').setView([36.884, -2.438], 16);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(leafletMap);
-
     renderTargetOnMap();
   }
 
   function renderTargetOnMap() {
+    if (!leafletMap || !S) return;
+    if (stationMarker) leafletMap.removeLayer(stationMarker);
+    const t = currentTarget();
+    stationMarker = L.marker([t.lat, t.lng]).addTo(leafletMap).bindPopup(`<strong>${escapeHtml(t.title)}</strong>`).openPopup();
+  }
+
+  function updateUserMarker(lat, lng) {
     if (!leafletMap) return;
-
-    if (stationMarker) {
-      leafletMap.removeLayer(stationMarker);
-    }
-
-    const target = getCurrentTarget();
-
-    stationMarker = L.marker([target.lat, target.lng]).addTo(leafletMap)
-      .bindPopup(`<strong>${target.title}</strong>`)
-      .openPopup();
+    if (!userMarker) {
+      userMarker = L.circleMarker([lat, lng], { radius: 10, fillColor: '#3b82f6', color: '#ffffff', weight: 3, opacity: 1, fillOpacity: 0.9 }).addTo(leafletMap);
+      userMarker.bindPopup('<b>🔵 Tu ubicación actual</b>');
+    } else userMarker.setLatLng([lat, lng]);
   }
 
   function toggleMap(show) {
-    const modal = document.getElementById('modal-map');
-    if (show) {
-      modal.classList.remove('hidden');
-      if (!leafletMap) {
-        initMap();
-      } else {
-        renderTargetOnMap();
-      }
-
-      setTimeout(() => {
-        if (leafletMap) {
-          leafletMap.invalidateSize();
-          if (currentUserLat && currentUserLng) {
-            updateUserMarker(currentUserLat, currentUserLng);
-          }
-        }
-      }, 200);
-    } else {
-      modal.classList.add('hidden');
+    const modal = $('modal-map');
+    if (!show) { modal.classList.add('hidden'); return; }
+    if (!S) return;
+    modal.classList.remove('hidden');
+    $('map-link').href = mapsUrl(currentTarget());
+    if (typeof L === 'undefined') {
+      $('map').classList.add('hidden'); $('map-offline').classList.remove('hidden');
+      return;
     }
+    $('map').classList.remove('hidden'); $('map-offline').classList.add('hidden');
+    if (!leafletMap) initMap(); else renderTargetOnMap();
+    setTimeout(() => {
+      if (!leafletMap) return;
+      leafletMap.invalidateSize();
+      if (curLat !== null) updateUserMarker(curLat, curLng);
+    }, 200);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Linterna
+  // ---------------------------------------------------------------------------------------------
+  function releaseTorch() {
+    if (torchStream) { torchStream.getTracks().forEach((t) => t.stop()); torchStream = null; }
   }
 
   async function toggleTorch() {
-    const btn = document.getElementById('btn-torch');
-
-    if (!isTorchOn) {
+    const btn = $('btn-torch');
+    if (!torchOn) {
+      let stream = null;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
-        });
-        torchTrack = stream.getVideoTracks()[0];
-        const capabilities = torchTrack.getCapabilities ? torchTrack.getCapabilities() : {};
-
-        if (capabilities.torch) {
-          await torchTrack.applyConstraints({ advanced: [{ torch: true }] });
-          isTorchOn = true;
-          btn.innerText = "🔦 Apagar Linterna";
-          btn.style.background = "#eab308";
-          btn.style.color = "#000";
-        } else {
-          toggleWhiteOverlay(true);
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        const track = stream.getVideoTracks()[0];
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.torch) {
+          await track.applyConstraints({ advanced: [{ torch: true }] });
+          torchStream = stream; torchOn = true;
+          btn.textContent = '🔦 Apagar Linterna';
+          btn.style.background = '#eab308'; btn.style.color = '#000';
+          return;
         }
-      } catch (e) {
-        toggleWhiteOverlay(true);
-      }
+      } catch (e) { /* sin permiso o sin linterna: se usa la pantalla blanca */ }
+      if (stream) stream.getTracks().forEach((t) => t.stop());   // no dejar la cámara abierta
+      toggleWhiteOverlay(true);
     } else {
-      if (torchTrack) {
-        torchTrack.stop();
-        torchTrack = null;
-      }
+      releaseTorch();
+      torchOn = false;
       toggleWhiteOverlay(false);
-      isTorchOn = false;
-      btn.innerText = "🔦 Linterna";
-      btn.style.background = "#2a2a2a";
-      btn.style.color = "#fff";
+      btn.textContent = '🔦 Linterna';
+      btn.style.background = ''; btn.style.color = '';
+    }
+  }
+  function toggleWhiteOverlay(show) { $('modal-white-screen').classList.toggle('hidden', !show); }
+
+  // ---------------------------------------------------------------------------------------------
+  // Arranque
+  // ---------------------------------------------------------------------------------------------
+  function startNewTeam() {
+    if (!confirm('Esto borra los datos de este equipo en este móvil (su tiempo ya consta en la clasificación). ¿Continuar?')) return;
+    clearSession(''); $('team-name').value = '';
+  }
+
+  function init() {
+    // restos de versiones anteriores de la página
+    ['escape_state', 'escape_team', 'escape_route', 'escape_step', 'escape_startTime', 'escape_token', 'escape_startMs',
+     'escape_offset', 'escape_synced', 'escape_final', 'pending_sync'].forEach((k) => store.del(k));
+
+    $('btn-start').addEventListener('click', registerTeam);
+    $('team-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('team-members').focus(); } });
+    $('team-members').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); registerTeam(); } });
+    $('btn-validate').addEventListener('click', validateCode);
+    $('station-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); validateCode(); } });
+    $('btn-cancel').addEventListener('click', cancelRegistration);
+    $('btn-new-team').addEventListener('click', startNewTeam);
+    $('btn-torch').addEventListener('click', toggleTorch);
+    $('btn-map').addEventListener('click', () => toggleMap(true));
+    $('btn-close-map').addEventListener('click', () => toggleMap(false));
+    $('btn-ar').addEventListener('click', () => { releaseTorch(); window.location.href = 'ar-test.html'; });
+    $('modal-white-screen').addEventListener('click', () => toggleWhiteOverlay(false));
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || !S) return;
+      keepAwake(S.state === 'wait' || S.state === 'game');
+      if (S.state !== 'end' && !busy) syncStatus();          // al volver (de la cámara RA, del bloqueo...) se alinea con el servidor
+    });
+    window.addEventListener('pageshow', (e) => { if (e.persisted && S && S.state !== 'end') syncStatus(); });
+    window.addEventListener('pagehide', releaseTorch);
+
+    S = loadSession();
+    if (!S) { showScreen('start'); }
+    else if (S.state === 'end') { $('final-time').textContent = S.finalTime || '--'; showScreen('end'); }
+    else {
+      // Se pinta enseguida lo guardado y se corrige con lo que diga el servidor
+      if (S.state === 'game' && S.startMs) { showScreen('game'); updateGameUI(); startTimer(); startGPS(); keepAwake(true); }
+      else { showScreen('wait'); $('wait-team-name').textContent = S.team; startGPS(); keepAwake(true); }
+      syncStatus(true);
+    }
+
+    // Funciona sin conexión en el túnel: el service worker guarda el escáner RA y sus archivos
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      window.addEventListener('load', () => setTimeout(() => navigator.serviceWorker.register('sw.js').catch(() => {}), 3000));
     }
   }
 
-  function toggleWhiteOverlay(show) {
-    const overlay = document.getElementById('modal-white-screen');
-    if (show) {
-      overlay.classList.remove('hidden');
-    } else {
-      overlay.classList.add('hidden');
-    }
-  }
+  init();
+})();
 </script>
 
 </body>

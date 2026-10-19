@@ -19,25 +19,18 @@
     header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid var(--accent); padding-bottom: 15px; }
     h1 { color: var(--accent); font-size: 2rem; text-transform: uppercase; letter-spacing: 2px; }
     .subtitle { color: #888; font-size: 0.9rem; margin-top: 5px; }
-    
+    .meta { color: #888; font-size: 0.85rem; margin-top: 8px; font-variant-numeric: tabular-nums; }
+    .meta.error { color: #f87171; }
+
     .leaderboard { display: flex; flex-direction: column; gap: 10px; }
-    .row {
-      background: var(--card);
-      border: 1px solid #222;
-      border-radius: 10px;
-      padding: 15px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      transition: all 0.3s ease;
-    }
-    .rank { font-size: 1.4rem; font-weight: bold; width: 40px; color: #666; }
+    .row { background: var(--card); border: 1px solid #222; border-radius: 10px; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .rank { font-size: 1.4rem; font-weight: bold; width: 52px; flex: none; color: #666; }
     .rank-1 { color: var(--gold); }
     .rank-2 { color: var(--silver); }
     .rank-3 { color: var(--bronze); }
-    .team-info { flex-grow: 1; margin-left: 10px; }
-    .team-name { font-size: 1.1rem; font-weight: bold; }
-    .team-time { font-size: 1.3rem; font-weight: bold; color: var(--accent); }
+    .team-info { flex: 1; min-width: 0; margin-left: 4px; }
+    .team-name { font-size: 1.1rem; font-weight: bold; overflow-wrap: anywhere; }
+    .team-time { font-size: 1.3rem; font-weight: bold; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .empty-msg { text-align: center; color: #666; padding: 40px 0; }
   </style>
 </head>
@@ -47,6 +40,7 @@
   <header>
     <h1>La Sombra de Huércal</h1>
     <p class="subtitle">Ranking Oficial de Equipos en Tiempo Real</p>
+    <p id="meta" class="meta" role="status" aria-live="polite">&nbsp;</p>
   </header>
 
   <div id="leaderboard" class="leaderboard">
@@ -54,63 +48,64 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzH1DLfJbe-Rh65ga9XxgIbHDJZDLh_DSMrUm9jKJ18N6LNEEBYkteImOJ-W_CunwRb/exec";
+(() => {
+  'use strict';
+  const CFG = window.ESCAPE_CONFIG;
+  if (!CFG) { document.body.innerHTML = '<p style="padding:24px;color:#ef4444">No se ha podido cargar config.js.</p>'; return; }
 
-  async function fetchLeaderboard() {
-    try {
-      const res = await fetch(`${WEB_APP_URL}?action=getData`);
-      const data = await res.json();
+  const REFRESH_MS = 15000;     // el servidor guarda la respuesta 5 s: cientos de pantallas no lo saturan
+  const MEDAL = ['🥇', '🥈', '🥉'];
+  const $ = (id) => document.getElementById(id);
+  let loading = false, lastOk = 0;
 
-      const finished = data.filter(item => item.status === "Finalizado" && item.totalTime);
+  const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 
-      finished.sort((a, b) => {
-        return parseTimeToSeconds(a.totalTime) - parseTimeToSeconds(b.totalTime);
-      });
-
-      const container = document.getElementById('leaderboard');
-      
-      if (finished.length === 0) {
-        container.innerHTML = `<div class="empty-msg">Ningún equipo ha completado la misión aún.</div>`;
-        return;
-      }
-
-      container.innerHTML = finished.map((item, index) => {
-        const rank = index + 1;
-        let rankClass = "rank";
-        if (rank === 1) rankClass += " rank-1";
-        if (rank === 2) rankClass += " rank-2";
-        if (rank === 3) rankClass += " rank-3";
-
-        return `
-          <div class="row">
-            <div class="${rankClass}">#${rank}</div>
-            <div class="team-info">
-              <div class="team-name">${escapeHtml(item.team)}</div>
-            </div>
-            <div class="team-time">${item.totalTime}</div>
-          </div>
-        `;
+  function render(d) {
+    const box = $('leaderboard');
+    if (!d.items.length) {
+      box.innerHTML = '<div class="empty-msg">Ningún equipo ha completado la misión aún.</div>';
+    } else {
+      let rank = 0, prev = null;                 // empate = mismo puesto
+      box.innerHTML = d.items.map((it, i) => {
+        if (it.secs !== prev) { rank = i + 1; prev = it.secs; }
+        const cls = rank <= 3 ? ` rank-${rank}` : '';
+        return `<div class="row">
+          <div class="rank${cls}">${rank <= 3 ? MEDAL[rank - 1] : '#' + rank}</div>
+          <div class="team-info"><div class="team-name">${esc(it.team)}</div></div>
+          <div class="team-time">${esc(it.totalTime)}</div>
+        </div>`;
       }).join('');
-
-    } catch (err) {
-      console.error("Error al obtener la clasificación:", err);
     }
+    const m = $('meta');
+    m.className = 'meta';
+    m.textContent = `${d.playing} en juego · ${d.items.length} finalizados · ${d.registered} registrados`;
   }
 
-  function parseTimeToSeconds(timeStr) {
-    if (!timeStr) return 999999;
-    const parts = timeStr.match(/(\d+)m\s*(\d+)s/);
-    if (!parts) return 999999;
-    return parseInt(parts[1]) * 60 + parseInt(parts[2]);
+  async function load() {
+    if (loading || document.hidden) return;
+    loading = true;
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch(`${CFG.WEB_APP_URL}?action=leaderboard`, { signal: controller.signal });
+      const d = JSON.parse(await res.text());
+      if (d.status !== 'OK' || !Array.isArray(d.items)) throw new Error(d.status || 'BAD');
+      lastOk = Date.now();
+      render(d);
+    } catch (e) {
+      // se conserva la última clasificación en pantalla y solo se avisa
+      const m = $('meta');
+      m.className = 'meta error';
+      m.textContent = lastOk ? 'Sin conexión: se muestra la última clasificación recibida.' : 'No se pudo cargar la clasificación. Reintentando...';
+    } finally { clearTimeout(id); loading = false; }
   }
 
-  function escapeHtml(text) {
-    return text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
-  }
-
-  fetchLeaderboard();
-  setInterval(fetchLeaderboard, 10000);
+  load();
+  setInterval(load, REFRESH_MS);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+})();
 </script>
 
 </body>

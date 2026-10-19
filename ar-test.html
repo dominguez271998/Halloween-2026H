@@ -3,16 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
   <title>Escáner RA - La Sombra de Huércal</title>
 
-  <!-- A-Frame 1.3.0 + AR.js 3.4.5 -->
-  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
-  <!-- Extras para soporte de animaciones 3D GLTF -->
-  <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+  <!-- A-Frame 1.3.0 + AR.js 3.4.5 alojados en el propio repositorio (carpeta lib/):
+       el escáner ya no depende de aframe.io, jsdelivr ni github.io, que fallan con poca cobertura. -->
+  <script src="lib/aframe-1.3.0.min.js"></script>
+  <script src="lib/aframe-ar-3.4.5.js"></script>
+
+  <script>
+    // Ajusta una <a-image> a su proporción real (sirve cualquier imagen) y no la muestra hasta
+    // que ha cargado: así nunca se ve un cuadrado blanco mientras la imagen se descarga.
+    AFRAME.registerComponent('fit-image', {
+      schema: { maxW: { default: 1.5 }, maxH: { default: 1.5 } },
+      init: function () {
+        var el = this.el, d = this.data;
+        el.setAttribute('visible', false);
+        el.addEventListener('materialtextureloaded', function () {
+          var mesh = el.getObject3D('mesh');
+          var img = mesh && mesh.material && mesh.material.map && mesh.material.map.image;
+          if (!img || !img.width || !img.height) return;
+          var ratio = img.width / img.height, w = d.maxW, h = w / ratio;
+          if (h > d.maxH) { h = d.maxH; w = h * ratio; }
+          el.setAttribute('width', w);
+          el.setAttribute('height', h);
+          el.setAttribute('visible', true);
+        });
+        el.addEventListener('materialtextureerror', function () {
+          console.warn('No se pudo cargar la imagen', el.getAttribute('src'));
+        });
+      }
+    });
+  </script>
 
   <style>
     html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+
+    /* AR.js coloca el <video> con z-index negativo: si <body> tuviera fondo opaco taparía la cámara.
+       El negro va solo en <html> y <body> queda transparente. */
     html { background: #000; }
     body {
       background: transparent;
@@ -21,7 +49,8 @@
     }
 
     .ar-status-bar,
-    .btn-back-game {
+    .btn-back-game,
+    .clue-card {
       position: fixed;
       left: 50%;
       transform: translateX(-50%);
@@ -58,6 +87,39 @@
       cursor: pointer;
       box-shadow: 0 4px 10px rgba(255, 107, 0, 0.5);
     }
+
+    /* Tarjeta con la pista: sigue en pantalla unos segundos aunque el marcador salga de plano,
+       para que dé tiempo a apuntarla. */
+    .clue-card {
+      bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      width: 88%;
+      max-width: 380px;
+      padding: 12px 44px 14px;
+      background: rgba(13, 13, 13, 0.93);
+      border: 1px solid #ff6b00;
+      border-radius: 14px;
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.85);
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, 14px);
+      transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s;
+    }
+    .clue-card.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+      transition-delay: 0s;
+    }
+    .clue-title { color: #ff6b00; font-size: 0.78rem; font-weight: bold; letter-spacing: 0.06em; text-transform: uppercase; }
+    .clue-value { color: #22c55e; font-size: 2.3rem; font-weight: 800; letter-spacing: 0.14em; line-height: 1.15; margin-top: 2px; word-break: break-word; }
+    .clue-value.orange { color: #ff6b00; }
+    .clue-hint { color: #aaa; font-size: 0.75rem; margin-top: 2px; }
+    .clue-close {
+      position: absolute; top: 0; right: 0;
+      width: 44px; height: 44px;
+      background: none; border: none; color: #aaa; font-size: 1.1rem; cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -66,65 +128,88 @@
     👁️ Busca y escanea los símbolos de la Sombra
   </div>
 
-  <button type="button" class="btn-back-game" onclick="window.history.back()">Volver al Juego</button>
+  <div class="clue-card" id="clue-card" role="status" aria-live="polite">
+    <button type="button" class="clue-close" id="clue-close" aria-label="Cerrar pista">✕</button>
+    <div class="clue-title" id="clue-title"></div>
+    <div class="clue-value" id="clue-value"></div>
+    <div class="clue-hint" id="clue-hint"></div>
+  </div>
 
+  <button type="button" class="btn-back-game" id="btn-back">Volver al Juego</button>
+
+  <!--
+    ORIENTACIÓN: cada <a-marker> tiene dentro un <a-entity rotation="-90 0 0">. En AR.js el eje Y del
+    marcador sale de la superficie hacia la cámara; con esa rotación el contenido queda "de pie" y de
+    frente cuando se apunta al marcador (en una pared, en un cartel o sostenido en la mano), y "arriba"
+    es arriba en la pantalla. Si algún marcador estuviera tumbado en una mesa y se mirase desde arriba,
+    basta con quitar ese rotation="-90 0 0".
+
+    TAMAÑO: la unidad es el lado del marcador (1 = lo que mide el cuadrado impreso).
+    Sin <a-assets>: los modelos e imágenes cargan por su cuenta y la cámara arranca sin esperarlos.
+  -->
   <a-scene embedded
-           arjs="sourceType: webcam; detectionMode: mono; debugUIEnabled: false;"
+           arjs="sourceType: webcam; detectionMode: mono; debugUIEnabled: false; cameraParametersUrl: lib/camera_para.dat;"
            renderer="alpha: true; antialias: false"
            vr-mode-ui="enabled: false"
            device-orientation-permission-ui="enabled: false">
 
-    <!-- RECURSOS: CARGA SOLO DEL MODELO FANTASMA 3D -->
-    <a-assets timeout="4000">
-      <a-asset-item id="modelo-fantasma" src="ghost.glb"></a-asset-item>
-    </a-assets>
+    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (MARCADOR CORRECTO + FANTASMA FLOTANDO) -->
+    <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo"
+              smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
+      <!-- luz suave + un foco naranja de lado: el fantasma (blanco liso) se ve con volumen y no como una mancha plana -->
+      <a-light type="ambient" color="#c9d3ff" intensity="0.95"></a-light>
+      <a-light type="directional" color="#ff8a33" intensity="1.6" position="-1.5 2.5 2"></a-light>
+      <a-light type="directional" color="#6f7dff" intensity="0.5" position="2 0.5 -1"></a-light>
 
-    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (MARCADOR CORRECTO + FANTASMA 3D) -->
-    <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo">
-      <a-light type="ambient" color="#ffffff" intensity="1.5"></a-light>
-      <a-light type="directional" color="#ff6b00" intensity="2.0" position="0 2 1"></a-light>
-
-      <a-entity gltf-model="#modelo-fantasma"
-                position="0 0.2 0"
-                scale="0.6 0.6 0.6"
-                animation-mixer
-                animation="property: position; to: 0 0.6 0; dir: alternate; easing: easeInOutSine; loop: true; dur: 1500;">
+      <a-entity rotation="-90 0 0">
+        <!-- sube y baja suavemente (el trayecto va hacia ARRIBA en pantalla) -->
+        <a-entity position="0 0.25 0"
+                  animation__flotar="property: position; from: 0 0.17 0; to: 0 0.38 0; dir: alternate; dur: 1900; easing: easeInOutSine; loop: true">
+          <!-- balanceo lento y, al aparecer, crece desde cero -->
+          <a-entity class="appear" scale="0.38 0.38 0.38"
+                    animation__balanceo="property: rotation; from: 0 -12 -3; to: 0 12 3; dir: alternate; dur: 3300; easing: easeInOutSine; loop: true"
+                    animation__aparecer="property: scale; from: 0.001 0.001 0.001; to: 0.38 0.38 0.38; dur: 900; easing: easeOutBack; startEvents: appear">
+            <!-- el modelo mide ~3 unidades y su centro está en (0.096, 1.407, -0.022): se centra para girar sobre sí mismo -->
+            <a-entity gltf-model="url(ghost.glb)" position="-0.096 -1.407 0.022"></a-entity>
+          </a-entity>
+        </a-entity>
       </a-entity>
-
-      <a-plane position="0 2.2 0" width="2.6" height="0.8"
-               material="shader: flat; color: #000000; opacity: 0.9; transparent: true">
-        <a-text value="¡REVELACIÓN DE LA PITONISA!\nClave: SANTOS"
-                align="center" width="2.4" color="#ff6b00" position="0 0 0.02"></a-text>
-      </a-plane>
     </a-marker>
 
-    <!-- 2. TÚNEL: MARCADOR FALSO 1 (MUESTRA DIRECTAMENTE falso1.png) -->
-    <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1">
-      <a-image src="falso1.png" position="0 0 0.1" rotation="0 0 0" width="2.5" height="1.5"
-               material="shader: flat; transparent: true"></a-image>
+    <!-- 2. TÚNEL: MARCADOR FALSO 1 (muestra falso1.png) -->
+    <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1"
+              smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
+      <a-entity rotation="-90 0 0">
+        <a-image class="appear" src="falso1.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
+                 animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
+      </a-entity>
     </a-marker>
 
-    <!-- 3. TÚNEL: MARCADOR FALSO 2 (MUESTRA DIRECTAMENTE falso2.png) -->
-    <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2">
-      <a-image src="falso2.png" position="0 0 0.1" rotation="0 0 0" width="2.5" height="1.5"
-               material="shader: flat; transparent: true"></a-image>
+    <!-- 3. TÚNEL: MARCADOR FALSO 2 (muestra falso2.png) -->
+    <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2"
+              smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
+      <a-entity rotation="-90 0 0">
+        <a-image class="appear" src="falso2.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
+                 animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
+      </a-entity>
     </a-marker>
 
-    <!-- 4. TÚNEL: MARCADOR FALSO 3 (MUESTRA DIRECTAMENTE falso3.png) -->
-    <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3">
-      <a-image src="falso3.png" position="0 0 0.1" rotation="0 0 0" width="2.5" height="1.5"
-               material="shader: flat; transparent: true"></a-image>
+    <!-- 4. TÚNEL: MARCADOR FALSO 3 (muestra falso3.png) -->
+    <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3"
+              smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
+      <a-entity rotation="-90 0 0">
+        <a-image class="appear" src="falso3.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
+                 animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
+      </a-entity>
     </a-marker>
 
-    <!-- 5. TÚNEL: MARCADOR CORRECTO - CÓDIGO NUMÉRICO -->
-    <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto">
-      <a-plane position="0 0 0.15" width="2.6" height="1.4"
-               material="shader: flat; color: #0d0d0d; opacity: 0.95; transparent: true">
-        <a-text value="CÓDIGO DEL TÚNEL DETECTADO"
-                align="center" width="2.2" color="#ff6b00" position="0 0.35 0.02"></a-text>
-        <a-text value="8492"
-                align="center" width="6.0" color="#22c55e" position="0 -0.1 0.02"></a-text>
-      </a-plane>
+    <!-- 5. TÚNEL: MARCADOR CORRECTO - muestra tunel.png con el código -->
+    <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto"
+              smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
+      <a-entity rotation="-90 0 0">
+        <a-image class="appear" src="tunel.png" fit-image="maxW: 2.2; maxH: 1.2" position="0 0.1 0.02"
+                 animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
+      </a-entity>
     </a-marker>
 
     <a-entity camera></a-entity>
@@ -135,15 +220,20 @@
   'use strict';
 
   const DEFAULT_STATUS = '👁️ Busca y escanea los símbolos de la Sombra';
-  const SPEECH_COOLDOWN_MS = 8000;
+  const STATUS_LINGER_MS = 6000;     // el aviso superior vuelve al texto inicial pasado este tiempo
+  const CARD_LINGER_MS = 25000;      // la tarjeta con la pista sigue visible tras perder el marcador
+  const RESPEAK_AFTER_MS = 4000;     // la voz solo se repite si el marcador estuvo fuera de plano este tiempo
 
+  // Un solo sitio para configurar qué pasa con cada marcador.
   const MARKERS = {
     'marker-escudo': {
       status: '✨ ¡Espectro Verdadero Detectado!',
+      card: { title: '¡Revelación de la Pitonisa!', value: 'SANTOS', hint: 'Palabra clave de la estación', tone: 'orange' },
       speech: { text: 'Has encontrado al espectro de Huércal. Tu palabra clave es Santos.', pitch: 0.4, rate: 0.8 }
     },
     'marker-tunel-correcto': {
       status: '✅ ¡Código del Túnel Encontrado!',
+      card: { title: 'Código del túnel detectado', value: '8492', hint: 'Código numérico de la estación', tone: 'green' },
       speech: { text: '¡Código correcto del túnel hallado! Tu clave numérica es 8 4 9 2.', pitch: 0.5, rate: 0.85 }
     },
     'marker-falso1': { status: '❌ Símbolo Falso. ¡Sigue buscando!' },
@@ -151,60 +241,109 @@
     'marker-falso3': { status: '❌ Símbolo Falso. ¡Sigue buscando!' }
   };
 
-  const statusEl = document.getElementById('ar-status');
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $('ar-status');
+  const card = $('clue-card');
+  const visible = new Set();
+  const spoken = {};
+  const respeakTimers = {};
+  const lastStatus = { id: null };
+  let statusTimer = null;
+  let cardTimer = null;
+
   const setStatus = (text) => { statusEl.textContent = text; };
-  const lastSpoken = {};
 
-  function speak(id, speech) {
+  function showCard(c) {
+    clearTimeout(cardTimer);
+    $('clue-title').textContent = c.title;
+    const v = $('clue-value');
+    v.textContent = c.value;
+    v.className = 'clue-value' + (c.tone === 'orange' ? ' orange' : '');
+    $('clue-hint').textContent = c.hint || '';
+    card.classList.add('show');
+  }
+  function hideCard() { clearTimeout(cardTimer); card.classList.remove('show'); }
+  $('clue-close').addEventListener('click', hideCard);
+
+  function speak(speech) {
     if (!speech || !('speechSynthesis' in window)) return;
-    const now = Date.now();
-    if (now - (lastSpoken[id] || 0) < SPEECH_COOLDOWN_MS) return;
-    lastSpoken[id] = now;
-
-    const u = new SpeechSynthesisUtterance(speech.text);
-    u.lang = 'es-ES';
-    u.pitch = speech.pitch;
-    u.rate = speech.rate;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    try {
+      const u = new SpeechSynthesisUtterance(speech.text);
+      u.lang = 'es-ES';
+      u.pitch = speech.pitch;
+      u.rate = speech.rate;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* sin voz disponible */ }
   }
 
+  // iOS/Android solo permiten hablar tras un gesto del usuario: se "desbloquea" con el primer toque.
   window.addEventListener('pointerdown', () => {
     try {
       const u = new SpeechSynthesisUtterance('');
       u.volume = 0;
       window.speechSynthesis.speak(u);
-    } catch (e) {}
+    } catch (e) { /* sin voz disponible */ }
   }, { once: true });
 
-  window.addEventListener('DOMContentLoaded', () => {
+  function onFound(id, cfg, el) {
+    visible.add(id);
+    lastStatus.id = id;
+    clearTimeout(statusTimer);
+    clearTimeout(respeakTimers[id]);
+    setStatus(cfg.status);
+    if (cfg.card) showCard(cfg.card);
+    if (cfg.speech && !spoken[id]) { spoken[id] = true; speak(cfg.speech); }
+    el.querySelectorAll('.appear').forEach((n) => { if (n.emit) n.emit('appear'); });
+  }
 
+  function onLost(id, cfg) {
+    visible.delete(id);
+    // la voz podrá repetirse si el jugador vuelve a encontrar el marcador pasado un rato
+    respeakTimers[id] = setTimeout(() => { spoken[id] = false; }, RESPEAK_AFTER_MS);
+    if (cfg.card) {
+      clearTimeout(cardTimer);
+      cardTimer = setTimeout(hideCard, CARD_LINGER_MS);
+    }
+    if (visible.size) {
+      const other = Array.from(visible).pop();
+      setStatus(MARKERS[other].status);
+    } else {
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => setStatus(DEFAULT_STATUS), STATUS_LINGER_MS);
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
     Object.entries(MARKERS).forEach(([id, cfg]) => {
-      const el = document.getElementById(id);
+      const el = $(id);
       if (!el) return;
-      el.addEventListener('markerFound', () => {
-        setStatus(cfg.status);
-        speak(id, cfg.speech);
-      });
+      el.addEventListener('markerFound', () => onFound(id, cfg, el));
+      el.addEventListener('markerLost', () => onLost(id, cfg));
     });
 
+    $('btn-back').addEventListener('click', () => {
+      if (history.length > 1) history.back(); else location.href = 'index.html';
+    });
+
+    // --- Diagnóstico: si algo falla, la barra superior dice qué ---
     if (!window.isSecureContext) {
       setStatus('⚠️ La cámara solo funciona con HTTPS.');
     }
-
     window.addEventListener('camera-error', () => {
       setStatus('⚠️ No se pudo abrir la cámara. Permite el acceso y recarga.');
     });
     window.addEventListener('camera-init', () => setStatus(DEFAULT_STATUS));
 
+    // Comprobar que cada .patt existe (una petición HEAD, sin descargar nada)
     document.querySelectorAll('a-marker[type="pattern"]').forEach((marker) => {
       const url = marker.getAttribute('url');
-      fetch(url)
-        .then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); })
-        .then((txt) => { if (txt.trim().startsWith('<')) throw new Error('html'); })
+      fetch(url, { method: 'HEAD' })
+        .then((r) => { if (!r.ok) throw new Error(r.status); })
         .catch(() => setStatus('⚠️ Falta o falla el archivo ' + url));
     });
 
+    // Si pasados 10 s el vídeo no ha arrancado, avisamos
     setTimeout(() => {
       const v = document.getElementById('arjs-video') || document.querySelector('video');
       if (!v || v.readyState < 2) {
@@ -213,12 +352,24 @@
     }, 10000);
   });
 
+  // Liberar la cámara al salir y recuperarla si el navegador restaura la página desde caché
   window.addEventListener('pagehide', () => {
     document.querySelectorAll('video').forEach((v) => {
       if (v.srcObject) v.srcObject.getTracks().forEach((t) => t.stop());
     });
   });
   window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+
+  // Funcionamiento sin cobertura: sw.js guarda en el móvil el escáner y sus recursos.
+  // Para desactivarlo en un dispositivo, abre la página con ?nosw
+  if ('serviceWorker' in navigator) {
+    if (/[?&]nosw\b/.test(location.search)) {
+      navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister()));
+      if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k)));
+    } else {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  }
 })();
 </script>
 
