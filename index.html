@@ -81,9 +81,87 @@
 
     .route-box {
       background: #262626; border-left: 4px solid var(--accent); padding: 10px 15px;
-      margin: 15px 0; border-radius: 0 8px 8px 0;
+      margin: 12px 0; border-radius: 0 8px 8px 0;
     }
     .progress-bar { color: var(--warning); font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
+
+    /* Bloques narrativos de historia y misión */
+    .prologue-box {
+      background: linear-gradient(180deg, #16110d 0%, #121212 100%);
+      border: 1px solid rgba(255, 107, 0, 0.35);
+      border-left: 3px solid var(--accent);
+      border-radius: 10px;
+      padding: 14px 15px;
+      margin: 16px 0 8px;
+      text-align: left;
+    }
+    .prologue-title {
+      color: var(--accent);
+      font-size: 0.95rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .prologue-text p {
+      color: #d6d3d1;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+    .prologue-text p:last-child { margin-bottom: 0; }
+
+    .lore-box {
+      background: #14110f;
+      border: 1px solid #2c221e;
+      border-left: 3px solid #b45309;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      color: #d6d3d1;
+      font-style: italic;
+      font-size: 0.92rem;
+      line-height: 1.48;
+    }
+
+    .mission-box {
+      background: rgba(255, 107, 0, 0.08);
+      border: 1px solid rgba(255, 107, 0, 0.3);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 15px;
+      font-size: 0.94rem;
+      line-height: 1.45;
+      color: #fff;
+    }
+    .mission-label {
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .game-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-story-mini {
+      background: #262626;
+      color: #d6d3d1;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      white-space: nowrap;
+    }
 
     .status-msg { margin-top: 10px; font-weight: bold; text-align: center; min-height: 1.3em; }
     .error { color: var(--danger); font-size: 0.85rem; margin-bottom: 10px; word-break: break-word; }
@@ -95,8 +173,8 @@
     }
 
     .spinner {
-      border: 4px solid rgba(255, 255, 255, 0.1); width: 40px; height: 40px; border-radius: 50%;
-      border-left-color: var(--warning); animation: spin 1s linear infinite; margin: 20px auto;
+      border: 4px solid rgba(255, 255, 255, 0.1); width: 36px; height: 36px; border-radius: 50%;
+      border-left-color: var(--warning); animation: spin 1s linear infinite; margin: 14px auto;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -107,6 +185,7 @@
     .modal-content {
       background: #1a1a1a; border: 1px solid var(--accent); border-radius: 12px;
       width: 100%; max-width: 420px; padding: 15px; text-align: center;
+      max-height: 90vh; overflow-y: auto;
     }
     #map { width: 100%; height: 320px; border-radius: 8px; border: 1px solid #444; margin: 12px 0; }
 
@@ -117,7 +196,7 @@
 
     .btn-link {
       background: none; border: none; color: var(--text-muted); text-decoration: underline;
-      font-size: 0.85rem; cursor: pointer; margin-top: 14px; padding: 6px;
+      font-size: 0.85rem; cursor: pointer; margin-top: 12px; padding: 6px;
     }
     .btn-secondary {
       width: 100%; padding: 12px; background: #2a2a2a; color: #fff; border: 1px solid #444;
@@ -150,7 +229,7 @@
   <div id="screen-start" class="card">
     <h2>Registro de Equipo</h2>
     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 10px 0 15px 0;">
-      Introduce los datos de tu equipo para comenzar.
+      La oscuridad se cierne sobre Huércal de Almería. Registra a tu grupo de supervivientes para comenzar el ritual.
     </p>
 
     <div id="lost-notice" class="notice hidden" style="margin-bottom: 15px;"></div>
@@ -171,48 +250,76 @@
 
   <div id="screen-wait" class="card hidden" style="text-align: center;">
     <h2 style="color: var(--warning);">Equipo Registrado</h2>
-    <p id="wait-team-name" style="font-size: 1.3rem; font-weight: bold; margin: 10px 0; color: #fff; word-break: break-word;"></p>
+    <p id="wait-team-name" style="font-size: 1.3rem; font-weight: bold; margin: 8px 0; color: #fff; word-break: break-word;"></p>
 
     <div class="spinner"></div>
 
-    <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4;">
-      Acercaos a la mesa de control de la organización<span id="wait-base"></span> para recibir la salida oficial. Esta pantalla avisará sola cuando empecéis.
+    <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.4;">
+      Acercaos a la mesa de control de la organización<span id="wait-base"></span> para recibir la salida oficial. <strong>Leed en voz alta la historia mientras esperáis:</strong>
     </p>
+
+    <!-- PRÓLOGO EN LA SALA DE ESPERA -->
+    <div id="wait-prologue-box" class="prologue-box hidden">
+      <div id="wait-prologue-title" class="prologue-title"></div>
+      <div id="wait-prologue-text" class="prologue-text"></div>
+    </div>
+
     <p id="wait-warning" class="error hidden" style="margin-top: 12px;"></p>
     <button type="button" id="btn-cancel" class="btn-link">¿Te has equivocado de nombre? Cancelar registro</button>
   </div>
 
   <div id="screen-game" class="card hidden">
-    <h2 id="display-team-name" style="color: var(--accent); word-break: break-word;"></h2>
+    <div class="game-header-row">
+      <h2 id="display-team-name" style="color: var(--accent); word-break: break-word;"></h2>
+      <button type="button" id="btn-open-prologue" class="btn-story-mini">📜 Prólogo</button>
+    </div>
 
     <div class="route-box">
       <div id="progress-indicator" class="progress-bar">Estación 1 de 4</div>
-      <strong>Tu objetivo actual:</strong>
+      <strong>Tu destino actual:</strong>
       <p id="assigned-station" style="font-size: 1.1rem; margin-top: 5px; color: #fff;"></p>
     </div>
 
-    <p id="station-instructions" style="margin-bottom: 15px; font-size: 0.95rem; line-height: 1.4;"></p>
+    <!-- HISTORIA DE TERROR DE LA ESTACIÓN -->
+    <div id="station-lore" class="lore-box hidden"></div>
+
+    <!-- INSTRUCCIONES CLARAS DE LA PRUEBA -->
+    <div class="mission-box">
+      <span class="mission-label">🕯️ Tu misión en este lugar:</span>
+      <p id="station-instructions"></p>
+    </div>
 
     <label for="station-code" id="label-code">Palabra Clave de la Estación:</label>
     <input type="text" id="station-code" placeholder="Introduce la palabra clave..." autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done">
 
-    <button type="button" id="btn-validate" class="btn-primary">Validar Código</button>
+    <button type="button" id="btn-validate" class="btn-primary">Validar Sello</button>
     <div id="game-status" class="status-msg" role="status" aria-live="polite"></div>
   </div>
 
   <div id="screen-end" class="card hidden" style="text-align: center;">
-    <h2 style="color: var(--success);">¡Misión Completada!</h2>
-    <p style="margin: 15px 0;">Has sellado la amenaza en Huércal de Almería.</p>
+    <h2 style="color: var(--success);">¡Maldición Sellada!</h2>
+    <p id="end-epilogue" style="margin: 15px 0; color: #d6d3d1; font-style: italic; font-size: 0.92rem; line-height: 1.45;">
+      Has sellado la amenaza en Huércal de Almería.
+    </p>
 
     <div style="background: #222; padding: 15px; border-radius: 8px; margin: 15px 0;">
-      <p style="color: var(--text-muted);">Tiempo total registrado:</p>
+      <p style="color: var(--text-muted);">Tiempo total del ritual:</p>
       <p id="final-time" style="font-size: 2rem; font-weight: bold; color: var(--accent);"></p>
     </div>
 
     <p style="font-size: 0.85rem; color: var(--text-muted);">
-      Tu tiempo ya consta en la clasificación oficial.
+      Tu tiempo ya consta en la clasificación oficial de supervivientes.
     </p>
     <button type="button" id="btn-new-team" class="btn-secondary">Registrar otro equipo en este móvil</button>
+  </div>
+</div>
+
+<!-- MODAL DEL PRÓLOGO (PARA LEERLO DURANTE LA PARTIDA SI QUERÍAN REPASARLO) -->
+<div id="modal-prologue" class="modal-overlay hidden">
+  <div class="modal-content">
+    <h3 id="modal-prologue-title" style="color: var(--accent); margin-bottom: 10px;">📜 Prólogo</h3>
+    <div id="modal-prologue-text" class="prologue-text" style="text-align: left; margin-bottom: 15px;"></div>
+    <button type="button" class="btn-primary" id="btn-close-prologue">Volver a la Misión</button>
   </div>
 </div>
 
@@ -249,6 +356,7 @@
   const $ = (id) => document.getElementById(id);
   const STATIONS = CFG.STATIONS;
   const BASE = CFG.BASE;
+  const STORY = CFG.STORY || {};
   const FINAL_STEP = 4;          // pasos 0-3: estaciones; 4: de vuelta a la base (clave final)
 
   const POLL_MS = 7000;          // "¿ya nos han dado la salida?" (con algo de azar para no pedir todos a la vez)
@@ -297,6 +405,24 @@
     const a = new Uint8Array(16);
     crypto.getRandomValues(a);
     return 't' + Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');   // empieza por letra: nunca se confunde con un número
+  }
+
+  // Inicializa los textos del prólogo y epílogo desde config.js
+  function initStoryTexts() {
+    const paragraphs = Array.isArray(STORY.prologue) ? STORY.prologue : (STORY.prologue ? [STORY.prologue] : []);
+    if (paragraphs.length) {
+      const title = STORY.prologueTitle || '📜 Prólogo: La Sombra de Huércal';
+      const html = paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join('');
+      $('wait-prologue-title').textContent = title;
+      $('wait-prologue-text').innerHTML = html;
+      $('wait-prologue-box').classList.remove('hidden');$('modal-prologue-title').textContent = title;
+      $('modal-prologue-text').innerHTML = html;
+    } else {
+      $('btn-open-prologue').classList.add('hidden');
+    }
+    if (STORY.epilogue) {
+      $('end-epilogue').textContent = STORY.epilogue;
+    }
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -375,14 +501,23 @@
     const target = currentTarget();
     const final = S.step >= FINAL_STEP;
     $('display-team-name').textContent = S.team;
-    $('progress-indicator').textContent = final ? '🏁 FASE FINAL' : `Estación ${S.step + 1} de 4`;
+    $('progress-indicator').textContent = final ? '🏁 RITUAL FINAL' : `Sello ${S.step + 1} de 4`;
     $('progress-indicator').style.color = final ? 'var(--success)' : '';
     $('assigned-station').textContent = target.title;
+
+    const loreEl = $('station-lore');
+    if (target.lore) {
+      loreEl.textContent = target.lore;
+      loreEl.classList.remove('hidden');
+    } else {
+      loreEl.classList.add('hidden');
+    }
+
     $('station-instructions').textContent = final
-      ? `¡Has completado las 4 estaciones! Regresa de inmediato ${BASE.regreso || 'a la base'} con la Organización para sellar tu victoria.`
+      ? (BASE.desc || `¡Has completado las 4 estaciones! Regresa de inmediato ${BASE.regreso || 'a la base'} con la Organización para sellar tu victoria.`)
       : target.desc;
-    $('label-code').textContent = final ? 'Código Final de la Organización:' : 'Palabra Clave de la Estación:';
-    $('station-code').placeholder = final ? 'Introduce el código final...' : 'Introduce la palabra clave...';
+    $('label-code').textContent = final ? 'Código Final de la Organización:' : 'Clave del Sello:';
+    $('station-code').placeholder = final ? 'Introduce el código final...' : 'Introduce la clave descubierta...';
     if (leafletMap) renderTargetOnMap();
   }
 
@@ -414,6 +549,7 @@
     stopGPS(); keepAwake(false);
     if (torchOn) toggleTorch();
     toggleMap(false);
+    $('modal-prologue').classList.add('hidden');
     $('final-time').textContent = S.finalTime || '--';
     showScreen('end');
   }
@@ -423,6 +559,7 @@
     stopGPS(); keepAwake(false);
     if (torchOn) toggleTorch();
     toggleMap(false);
+    $('modal-prologue').classList.add('hidden');
     const oldName = S ? S.team : '';
     S = null; store.del(KEY); store.del(KEY_PENDING);
     lockUntil = 0; curLat = curLng = null;
@@ -618,7 +755,7 @@
     if (!code) { setGameStatus('Escribe el código primero.', 'error'); return; }
 
     busy = true; $('btn-validate').disabled = true;
-    setGameStatus('Comprobando…', '');
+    setGameStatus('Comprobando el sello…', '');
     let keepDisabled = false;
     try {
       const d = await api(auth({ action: 'validate', code, paso: S.step }), 15000);
@@ -627,8 +764,8 @@
         case 'OK':
           S.step = d.step; saveSession();
           input.value = '';
-          setGameStatus('¡Código Correcto!', 'success');
-          setTimeout(() => { if (S && S.state === 'game') { setGameStatus('', ''); updateGameUI(); } }, 700);
+          setGameStatus('¡Sello desbloqueado!', 'success');
+          setTimeout(() => { if (S && S.state === 'game') { setGameStatus('', ''); updateGameUI(); window.scrollTo({ top: 0, behavior: 'smooth' }); } }, 700);
           break;
         case 'FINISHED':
           input.value = '';
@@ -636,7 +773,7 @@
           break;
         case 'WRONG':
           if (d.retry > 0) { startLockCountdown(d.retry); keepDisabled = true; }
-          else setGameStatus(('Código incorrecto. ' + (d.left > 0 ? `Os quedan ${d.left} intento${d.left === 1 ? '' : 's'} antes de una pausa.` : '')).trim(), 'error');
+          else setGameStatus(('Clave incorrecta. ' + (d.left > 0 ? `Os quedan ${d.left} intento${d.left === 1 ? '' : 's'} antes de que la Sombra os bloquee.` : '')).trim(), 'error');
           break;
         case 'LOCKED':
           startLockCountdown(d.retry || 30); keepDisabled = true;
@@ -828,6 +965,8 @@
     ['escape_state', 'escape_team', 'escape_route', 'escape_step', 'escape_startTime', 'escape_token', 'escape_startMs',
      'escape_offset', 'escape_synced', 'escape_final', 'pending_sync'].forEach((k) => store.del(k));
 
+    initStoryTexts();
+
     $('btn-start').addEventListener('click', registerTeam);
     $('team-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('team-members').focus(); } });
     $('team-members').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); registerTeam(); } });
@@ -840,6 +979,8 @@
     $('btn-close-map').addEventListener('click', () => toggleMap(false));
     $('btn-ar').addEventListener('click', () => { releaseTorch(); window.location.href = 'ar-test.html'; });
     $('modal-white-screen').addEventListener('click', () => toggleWhiteOverlay(false));
+    $('btn-open-prologue').addEventListener('click', () => $('modal-prologue').classList.remove('hidden'));
+    $('btn-close-prologue').addEventListener('click', () => $('modal-prologue').classList.add('hidden'));
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden || !S) return;
@@ -859,7 +1000,7 @@
     else {
       // Se pinta enseguida lo guardado y se corrige con lo que diga el servidor
       if (S.state === 'game' && S.startMs) { showScreen('game'); updateGameUI(); startTimer(); startGPS(); keepAwake(true); }
-      else { showScreen('wait'); $('wait-team-name').textContent = S.team; startGPS(); keepAwake(true); }
+      else { showScreen('wait'); $('wait-team-name').textContent = S.team; $('wait-base').textContent = BASE.salida ? ' ' + BASE.salida : ''; startGPS(); keepAwake(true); }
       syncStatus(true);
     }
 
