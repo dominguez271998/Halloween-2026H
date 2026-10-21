@@ -31,7 +31,7 @@ window.ESCAPE_CONFIG = {
       id: 2,
       title: "Estación 3: Calle Oscura (Paso Sombrío)",
       name: "Calle Oscura",
-      lat: 36.882500, lng: -2.438200, approx: true,     // ⚠ coordenadas aproximadas: confirma el punto exacto de la calle
+      lat: 36.885187, lng: -2.435430,                    // punto exacto de Calle Oscura (enlace de Maps de la organización)
       desc: "El actor te señalará la primera cifra. Encuentra las dos cifras ocultas en la calle con tu linterna y deduce el orden correcto. Al acertar, el actor te dirá la última cifra misteriosa según la hora exacta.",
       staff: "Prueba: Búsqueda de números + Orden con el actor"
     },

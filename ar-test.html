@@ -14,6 +14,23 @@
   <script>
     // Ajusta una <a-image> a su proporción real (sirve cualquier imagen) y no la muestra hasta
     // que ha cargado: así nunca se ve un cuadrado blanco mientras la imagen se descarga.
+    // Sombra suave y redonda (un degradado) que se apoya en el plano del marcador: ancla el fantasma a la mesa.
+    AFRAME.registerComponent('soft-shadow', {
+      schema: { size: { default: 1.2 }, opacity: { default: 0.5 } },
+      init: function () {
+        var T = AFRAME.THREE, c = document.createElement('canvas');
+        c.width = c.height = 128;
+        var g = c.getContext('2d'), r = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+        r.addColorStop(0, 'rgba(0,0,0,1)'); r.addColorStop(0.55, 'rgba(0,0,0,0.55)'); r.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+        var mat = new T.MeshBasicMaterial({ map: new T.CanvasTexture(c), transparent: true, opacity: this.data.opacity, depthWrite: false });
+        var mesh = new T.Mesh(new T.PlaneGeometry(this.data.size, this.data.size), mat);
+        mesh.rotation.x = -Math.PI / 2;           // tumbada sobre el marcador (plano XZ)
+        this.el.setObject3D('mesh', mesh);
+      },
+      remove: function () { this.el.removeObject3D('mesh'); }
+    });
+
     AFRAME.registerComponent('fit-image', {
       schema: { maxW: { default: 1.5 }, maxH: { default: 1.5 } },
       init: function () {
@@ -138,11 +155,12 @@
   <button type="button" class="btn-back-game" id="btn-back">Volver al Juego</button>
 
   <!--
-    ORIENTACIÓN: cada <a-marker> tiene dentro un <a-entity rotation="-90 0 0">. En AR.js el eje Y del
-    marcador sale de la superficie hacia la cámara; con esa rotación el contenido queda "de pie" y de
-    frente cuando se apunta al marcador (en una pared, en un cartel o sostenido en la mano), y "arriba"
-    es arriba en la pantalla. Si algún marcador estuviera tumbado en una mesa y se mirase desde arriba,
-    basta con quitar ese rotation="-90 0 0".
+    ORIENTACIÓN: en AR.js el eje Y del marcador sale de su superficie.
+      - Los marcadores de la pared / del túnel (falso1, falso2, falso3 y túnel) llevan dentro un <a-entity rotation="-90 0 0">:
+        así su imagen queda "de pie" y de frente cuando se apunta al cartel, y "arriba" es arriba en la pantalla.
+      - El marcador del ESCUDO (la Pitonisa) va TUMBADO EN UNA MESA, así que su contenido NO lleva esa rotación:
+        el fantasma se levanta del papel siguiendo el eje Y del marcador, o sea, en vertical. Si algún día ese marcador
+        se pegara a una pared, habría que meter su contenido dentro de un <a-entity rotation="-90 0 0">.
 
     TAMAÑO: la unidad es el lado del marcador (1 = lo que mide el cuadrado impreso).
     Sin <a-assets>: los modelos e imágenes cargan por su cuenta y la cámara arranca sin esperarlos.
@@ -153,25 +171,32 @@
            vr-mode-ui="enabled: false"
            device-orientation-permission-ui="enabled: false">
 
-    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (MARCADOR CORRECTO + FANTASMA FLOTANDO) -->
+    <!-- 1. PITONISA / CORTIJO MORENO: ESCUDO (marcador TUMBADO EN UNA MESA). El fantasma se levanta del papel en vertical y
+         flota unos centímetros por encima; debajo, una sombra suave sobre la mesa se encoge cuando él sube.
+         TAMAÑO DEL FANTASMA: scale 0.36 → mide ≈ 1 lado de marcador de alto y de ancho; súbelo o bájalo en las 2 apariciones de "0.36". -->
     <a-marker type="pattern" url="pattern-escudo.patt" id="marker-escudo"
               smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
-      <!-- luz suave + un foco naranja de lado: el fantasma (blanco liso) se ve con volumen y no como una mancha plana -->
+      <!-- luz desde arriba y de lado: el fantasma (blanco liso) se ve con volumen y no como una mancha plana -->
       <a-light type="ambient" color="#c9d3ff" intensity="0.95"></a-light>
       <a-light type="directional" color="#ff8a33" intensity="1.6" position="-1.5 2.5 2"></a-light>
-      <a-light type="directional" color="#6f7dff" intensity="0.5" position="2 0.5 -1"></a-light>
+      <a-light type="directional" color="#6f7dff" intensity="0.5" position="2 1.5 -1"></a-light>
 
-      <a-entity rotation="-90 0 0">
-        <!-- sube y baja suavemente (el trayecto va hacia ARRIBA en pantalla) -->
-        <a-entity position="0 0.25 0"
-                  animation__flotar="property: position; from: 0 0.17 0; to: 0 0.38 0; dir: alternate; dur: 1900; easing: easeInOutSine; loop: true">
-          <!-- balanceo lento y, al aparecer, crece desde cero -->
-          <a-entity class="appear" scale="0.38 0.38 0.38"
-                    animation__balanceo="property: rotation; from: 0 -12 -3; to: 0 12 3; dir: alternate; dur: 3300; easing: easeInOutSine; loop: true"
-                    animation__aparecer="property: scale; from: 0.001 0.001 0.001; to: 0.38 0.38 0.38; dur: 900; easing: easeOutBack; startEvents: appear">
-            <!-- el modelo mide ~3 unidades y su centro está en (0.096, 1.407, -0.022): se centra para girar sobre sí mismo -->
-            <a-entity gltf-model="url(ghost.glb)" position="-0.096 -1.407 0.022"></a-entity>
-          </a-entity>
+      <!-- sombra sobre la mesa -->
+      <a-entity class="appear" visible="false" position="0 0.004 0"
+                animation__aparecer="property: scale; from: 0.001 0.001 0.001; to: 1 1 1; dur: 900; easing: easeOutQuad; startEvents: appear">
+        <a-entity soft-shadow="size: 1.2; opacity: 0.55"
+                  animation__flotar="property: scale; from: 1 1 1; to: 0.78 0.78 0.78; dir: alternate; dur: 1900; easing: easeInOutSine; loop: true"></a-entity>
+      </a-entity>
+
+      <!-- sube y baja suavemente entre 0,10 y 0,32 (en lados de marcador) sobre la mesa -->
+      <a-entity id="ghost-float" position="0 0.10 0"
+                animation__flotar="property: position; from: 0 0.10 0; to: 0 0.32 0; dir: alternate; dur: 1900; easing: easeInOutSine; loop: true">
+        <!-- balanceo lento (gira sobre su base) y, al aparecer, crece desde cero -->
+        <a-entity class="appear" visible="false" scale="0.36 0.36 0.36"
+                  animation__balanceo="property: rotation; from: 0 -12 -2; to: 0 12 2; dir: alternate; dur: 3300; easing: easeInOutSine; loop: true"
+                  animation__aparecer="property: scale; from: 0.001 0.001 0.001; to: 0.36 0.36 0.36; dur: 900; easing: easeOutBack; startEvents: appear">
+          <!-- el modelo mide ~2,75 de alto y ~3 de ancho; su base está en y=0,031 y su centro en (0,096 ; -0,022): se coloca la base en el origen -->
+          <a-entity gltf-model="url(ghost.glb)" position="-0.096 -0.031 0.022"></a-entity>
         </a-entity>
       </a-entity>
     </a-marker>
@@ -180,7 +205,7 @@
     <a-marker type="pattern" url="pattern-falso1.patt" id="marker-falso1"
               smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
       <a-entity rotation="-90 0 0">
-        <a-image class="appear" src="falso1.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
+        <a-image class="appear" visible="false" src="falso1.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
                  animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
       </a-entity>
     </a-marker>
@@ -189,7 +214,7 @@
     <a-marker type="pattern" url="pattern-falso2.patt" id="marker-falso2"
               smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
       <a-entity rotation="-90 0 0">
-        <a-image class="appear" src="falso2.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
+        <a-image class="appear" visible="false" src="falso2.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
                  animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
       </a-entity>
     </a-marker>
@@ -198,7 +223,7 @@
     <a-marker type="pattern" url="pattern-falso3.patt" id="marker-falso3"
               smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
       <a-entity rotation="-90 0 0">
-        <a-image class="appear" src="falso3.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
+        <a-image class="appear" visible="false" src="falso3.png" fit-image="maxW: 1.5; maxH: 1.5" position="0 0.1 0.02"
                  animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
       </a-entity>
     </a-marker>
@@ -207,7 +232,7 @@
     <a-marker type="pattern" url="pattern-tunel.patt" id="marker-tunel-correcto"
               smooth="true" smoothCount="6" smoothTolerance="0.01" smoothThreshold="3">
       <a-entity rotation="-90 0 0">
-        <a-image class="appear" src="tunel.png" fit-image="maxW: 2.2; maxH: 1.2" position="0 0.1 0.02"
+        <a-image class="appear" visible="false" src="tunel.png" fit-image="maxW: 2.2; maxH: 1.2" position="0 0.1 0.02"
                  animation__aparecer="property: scale; from: 0.6 0.6 0.6; to: 1 1 1; dur: 450; easing: easeOutBack; startEvents: appear"></a-image>
       </a-entity>
     </a-marker>
@@ -223,6 +248,11 @@
   const STATUS_LINGER_MS = 6000;     // el aviso superior vuelve al texto inicial pasado este tiempo
   const CARD_LINGER_MS = 25000;      // la tarjeta con la pista sigue visible tras perder el marcador
   const RESPEAK_AFTER_MS = 4000;     // la voz solo se repite si el marcador estuvo fuera de plano este tiempo
+  // Anti falsos positivos: con marcadores parecidos (p. ej. números) el detector puede "ver" durante ~0,4 s
+  // un marcador que no es. Un marcador solo cuenta (aviso, imagen, pista y voz) si se mantiene a la vista
+  // CONFIRM_MS, tolerando que se pierda un instante (GAP_MS) por un temblor de la mano.
+  const CONFIRM_MS = 700;
+  const GAP_MS = 250;
 
   // Un solo sitio para configurar qué pasa con cada marcador.
   const MARKERS = {
@@ -294,11 +324,12 @@
     setStatus(cfg.status);
     if (cfg.card) showCard(cfg.card);
     if (cfg.speech && !spoken[id]) { spoken[id] = true; speak(cfg.speech); }
-    el.querySelectorAll('.appear').forEach((n) => { if (n.emit) n.emit('appear'); });
+    el.querySelectorAll('.appear').forEach((n) => { n.setAttribute('visible', true); if (n.emit) n.emit('appear'); });
   }
 
-  function onLost(id, cfg) {
+  function onLost(id, cfg, el) {
     visible.delete(id);
+    el.querySelectorAll('.appear').forEach((n) => n.setAttribute('visible', false));
     // la voz podrá repetirse si el jugador vuelve a encontrar el marcador pasado un rato
     respeakTimers[id] = setTimeout(() => { spoken[id] = false; }, RESPEAK_AFTER_MS);
     if (cfg.card) {
@@ -314,12 +345,50 @@
     }
   }
 
+  // --- Confirmación: un marcador solo cuenta si se mantiene a la vista CONFIRM_MS (ver arriba) ---
+  const live = new Set();        // marcadores que AR.js ve ahora mismo
+  const confirmed = new Set();   // marcadores ya dados por buenos
+  const seenSince = {};          // desde cuándo se ve cada uno sin huecos mayores que GAP_MS
+  const lastSeen = {};
+  const goneTimers = {};
+
+  function markerSeen(id) {
+    const now = Date.now();
+    live.add(id);
+    clearTimeout(goneTimers[id]);
+    if (seenSince[id] === undefined || (!confirmed.has(id) && now - lastSeen[id] > GAP_MS)) seenSince[id] = now;
+    lastSeen[id] = now;
+  }
+
+  function markerGone(id) {
+    live.delete(id);
+    lastSeen[id] = Date.now();
+    if (!confirmed.has(id)) return;               // un marcador sin confirmar que se pierde simplemente no llega a contar
+    clearTimeout(goneTimers[id]);
+    goneTimers[id] = setTimeout(() => {           // si vuelve a verse en GAP_MS, el temblor no cuenta como pérdida
+      confirmed.delete(id);
+      delete seenSince[id];
+      onLost(id, MARKERS[id], $(id));
+    }, GAP_MS);
+  }
+
+  setInterval(() => {
+    const now = Date.now();
+    live.forEach((id) => {
+      lastSeen[id] = now;
+      if (!confirmed.has(id) && now - seenSince[id] >= CONFIRM_MS) {
+        confirmed.add(id);
+        onFound(id, MARKERS[id], $(id));
+      }
+    });
+  }, 100);
+
   window.addEventListener('DOMContentLoaded', () => {
-    Object.entries(MARKERS).forEach(([id, cfg]) => {
+    Object.keys(MARKERS).forEach((id) => {
       const el = $(id);
       if (!el) return;
-      el.addEventListener('markerFound', () => onFound(id, cfg, el));
-      el.addEventListener('markerLost', () => onLost(id, cfg));
+      el.addEventListener('markerFound', () => markerSeen(id));
+      el.addEventListener('markerLost', () => markerGone(id));
     });
 
     $('btn-back').addEventListener('click', () => {

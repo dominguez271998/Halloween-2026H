@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0d0d0d">
   <title>Escape Room Huércal de Almería</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <!-- Abre ya la conexión con el servidor (Apps Script responde desde dos direcciones). El mapa (Leaflet) ya NO se
+       carga aquí: antes su hoja de estilos bloqueaba la página entera hasta que bajaba de unpkg; ahora solo se
+       descarga si alguien abre el mapa. -->
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <style>
     :root {
       --bg-color: #0d0d0d;
@@ -54,6 +58,10 @@
     }
 
     .hidden { display: none !important; }
+
+    /* Solo con index.html?debug: tiempos de las últimas peticiones al servidor */
+    .debug-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 3000; background: rgba(0,0,0,0.85); color: #9fe870;
+      font: 11px/1.35 ui-monospace, Menlo, monospace; padding: 6px 10px; white-space: pre-wrap; pointer-events: none; }
 
     label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--text-muted); }
 
@@ -214,6 +222,7 @@
     <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">Marcador: tu objetivo actual. Punto azul: tu ubicación.</p>
 
     <div id="map"></div>
+    <p id="map-loading" class="notice hidden">Cargando el mapa…</p>
     <p id="map-offline" class="error hidden">El mapa necesita conexión a internet.</p>
     <a id="map-link" class="maps-link" href="#" target="_blank" rel="noopener">Abrir el objetivo en Google Maps ↗</a>
 
@@ -227,7 +236,6 @@
 </div>
 
 <script src="config.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="" async></script>
 
 <script>
 (() => {
@@ -294,11 +302,23 @@
   // ---------------------------------------------------------------------------------------------
   // Red
   // ---------------------------------------------------------------------------------------------
+  const DEBUG = /[?&]debug\b/.test(location.search);
+  const timings = [];
+  function noteTiming(action, ms, result) {
+    if (!DEBUG) return;
+    timings.unshift(`${action.padEnd(14)} ${(ms / 1000).toFixed(1)} s  ${result}`);
+    timings.length = Math.min(timings.length, 6);
+    let bar = $('debug-bar');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'debug-bar'; bar.className = 'debug-bar'; document.body.appendChild(bar); }
+    bar.textContent = timings.join('\n');
+  }
+
   async function api(params, timeoutMs) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs || 12000);
+    const t0 = Date.now();
+    let result = 'ERROR';
     try {
-      const t0 = Date.now();
       const res = await fetch(`${CFG.WEB_APP_URL}?${new URLSearchParams(params)}`, { signal: controller.signal });
       const text = await res.text();
       let data;
@@ -306,9 +326,30 @@
       if (S && data && typeof data.now === 'number') {          // reloj del servidor: base del cronómetro
         S.offset = data.now - (t0 + Date.now()) / 2;
       }
+      result = data && data.status ? data.status : 'OK';
       return data;
-    } finally { clearTimeout(id); }
+    } catch (e) {
+      result = e && e.name === 'AbortError' ? 'TIMEOUT' : 'SIN RED';
+      throw e;
+    } finally { clearTimeout(id); noteTiming(params.action || '?', Date.now() - t0, result); }
   }
+
+  /** Para peticiones que se pueden repetir sin riesgo (registro con el mismo token, consulta de estado): reintenta solo. */
+  async function apiRetry(params, timeoutMs, tries, onSlow) {
+    let lastErr = null;
+    for (let i = 0; i < tries; i++) {
+      try {
+        const d = await api(params, timeoutMs);
+        if (d && d.status === 'BUSY' && i < tries - 1) { await sleep(1500 + Math.random() * 1500); continue; }
+        return d;
+      } catch (e) {
+        lastErr = e;
+        if (i < tries - 1 && onSlow) onSlow(i + 2);
+      }
+    }
+    throw lastErr || new Error('SIN_RED');
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const auth = (extra) => Object.assign({ teamName: S.team, cid: S.cid }, extra);
   const serverNow = () => Date.now() + (S ? S.offset : 0);
 
@@ -317,7 +358,8 @@
   // ---------------------------------------------------------------------------------------------
   function showScreen(name) {
     ['start', 'wait', 'game', 'end'].forEach((n) => $('screen-' + n).classList.toggle('hidden', n !== name));
-    $('tools-bar').classList.toggle('hidden', !(name === 'wait' || name === 'game'));
+    // Las herramientas (linterna, mapa, escáner RA) solo aparecen cuando hay una prueba en marcha: no en el registro ni en la espera.
+    $('tools-bar').classList.toggle('hidden', name !== 'game');
     if (name !== 'game') $('timer-display').textContent = name === 'end' ? 'Misión cumplida' : 'Tiempo: --:--';
   }
 
@@ -344,14 +386,14 @@
     if (leafletMap) renderTargetOnMap();
   }
 
-  function enterWait() {
+  function enterWait(firstPollMs) {
     S.state = 'wait'; saveSession();
     $('wait-team-name').textContent = S.team;
     $('wait-warning').classList.add('hidden');
     showScreen('wait');
     stopTimer();
     startGPS(); keepAwake(true);
-    schedulePoll(1500);
+    schedulePoll(firstPollMs !== undefined ? firstPollMs : 1500);
   }
 
   function enterGame() {
@@ -412,6 +454,13 @@
     e.textContent = msg; e.classList.remove('hidden');
   }
 
+  let swPedido = false;
+  function pedirServiceWorker(retraso) {
+    if (swPedido || !('serviceWorker' in navigator) || location.protocol === 'file:') return;
+    swPedido = true;
+    setTimeout(() => navigator.serviceWorker.register('sw.js').catch(() => {}), retraso);
+  }
+
   async function registerTeam() {
     if (busy) return;
     const btn = $('btn-start');
@@ -432,8 +481,12 @@
     busy = true; btn.disabled = true; btn.textContent = 'REGISTRANDO EQUIPO...';
     S = { team: name, cid: pend.cid, route: [0, 1, 2, 3], step: 0, state: 'wait', startMs: 0, offset: 0 };
     let registered = false;
+    // Si el servidor tarda (arranque en frío, poca cobertura), se dice qué pasa en vez de dejar el botón mudo.
+    const slowTimer = setTimeout(() => { if (busy) btn.textContent = 'CONECTANDO CON EL SERVIDOR…'; }, 4000);
     try {
-      const d = await api({ action: 'register', teamName: name, participantCount: members, cid: pend.cid }, 20000);
+      // El registro se puede repetir sin riesgo (mismo token): si falla o el servidor está ocupado, reintenta solo.
+      const d = await apiRetry({ action: 'register', teamName: name, participantCount: members, cid: pend.cid }, 15000, 3,
+        (n) => { btn.textContent = `CONECTANDO CON EL SERVIDOR… (intento ${n} de 3)`; });
       switch (d.status) {
         case 'OK':
           if (Array.isArray(d.route) && d.route.length === 4) S.route = d.route;
@@ -441,7 +494,10 @@
           store.del(KEY_PENDING);
           registered = true;
           busy = false;
-          await syncStatus(true);
+          pedirServiceWorker(3000);              // ahora que el registro ya salió, se prepara el modo sin conexión
+          // La respuesta del registro ya dice si el equipo está pendiente de salida: no hace falta un segundo viaje al servidor.
+          if (d.state === 'Pendiente') enterWait(POLL_MS);
+          else await syncStatus(true);          // equipo recuperado que ya estaba jugando o había terminado: hace falta su hora de salida
           return;
         case 'DUPLICATE': showRegisterError('¡Ese nombre de equipo ya existe! Prueba a cambiar el nombre o añadir una cifra.'); break;
         case 'INVALID_NAME': showRegisterError('El nombre no es válido. Usa entre 3 y 30 letras, números o espacios.'); break;
@@ -453,6 +509,7 @@
     } catch (err) {
       showRegisterError('Sin conexión con el servidor. Vuelve a pulsar "Registrar Equipo": si el registro llegó a hacerse, se recuperará.');
     } finally {
+      clearTimeout(slowTimer);
       busy = false;
       if (!registered) {       // no hay sesión hasta que el registro salga bien
         S = null;
@@ -497,7 +554,7 @@
   async function syncStatus(firstTime) {
     if (!S) return;
     try {
-      const d = await api({ action: 'checkStatus', teamName: S.team, cid: S.cid }, 9000);
+      const d = await apiRetry({ action: 'checkStatus', teamName: S.team, cid: S.cid }, 12000, 2);
       if (!S) return;
       if (d.status === 'NOT_FOUND' || d.status === 'BAD_TOKEN') { sessionLost(); return; }
       if (d.status !== 'OK') throw new Error(d.status);
@@ -677,17 +734,43 @@
     } else userMarker.setLatLng([lat, lng]);
   }
 
-  function toggleMap(show) {
+  // Leaflet se descarga solo la primera vez que se abre el mapa (antes bloqueaba la carga de toda la página).
+  let leafletPromise = null;
+  function loadLeaflet() {
+    if (typeof L !== 'undefined') return Promise.resolve();
+    if (leafletPromise) return leafletPromise;
+    leafletPromise = new Promise((resolve, reject) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; css.crossOrigin = '';
+      document.head.appendChild(css);
+      const js = document.createElement('script');
+      js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.crossOrigin = '';
+      const fail = () => { leafletPromise = null; js.remove(); css.remove(); reject(new Error('LEAFLET')); };
+      const timer = setTimeout(fail, 15000);
+      js.onload = () => { clearTimeout(timer); typeof L !== 'undefined' ? resolve() : fail(); };
+      js.onerror = () => { clearTimeout(timer); fail(); };
+      document.head.appendChild(js);
+    });
+    return leafletPromise;
+  }
+
+  async function toggleMap(show) {
     const modal = $('modal-map');
     if (!show) { modal.classList.add('hidden'); return; }
     if (!S) return;
     modal.classList.remove('hidden');
     $('map-link').href = mapsUrl(currentTarget());
+    $('map-offline').classList.add('hidden');
     if (typeof L === 'undefined') {
-      $('map').classList.add('hidden'); $('map-offline').classList.remove('hidden');
-      return;
+      $('map').classList.add('hidden'); $('map-loading').classList.remove('hidden');
+      try { await loadLeaflet(); } catch (e) {
+        $('map-loading').classList.add('hidden'); $('map-offline').classList.remove('hidden');
+        return;
+      }
+      $('map-loading').classList.add('hidden');
+      if (modal.classList.contains('hidden') || !S) return;          // lo cerraron mientras cargaba
     }
-    $('map').classList.remove('hidden'); $('map-offline').classList.add('hidden');
+    $('map').classList.remove('hidden');
     if (!leafletMap) initMap(); else renderTargetOnMap();
     setTimeout(() => {
       if (!leafletMap) return;
@@ -765,7 +848,11 @@
     window.addEventListener('pageshow', (e) => { if (e.persisted && S && S.state !== 'end') syncStatus(); });
     window.addEventListener('pagehide', releaseTorch);
 
+    // Mientras el equipo escribe su nombre, se "despierta" el servidor (Apps Script tarda unos segundos en arrancar si lleva rato
+    // parado) y se abre la conexión: así el registro, que es lo primero que se pide, ya encuentra todo listo.
     S = loadSession();
+    if (!S || S.state !== 'end') api({ action: 'ping' }, 20000).catch(() => { /* sin cobertura: ya se avisará al registrar */ });
+
     if (!S) { showScreen('start'); }
     else if (S.state === 'end') { $('final-time').textContent = S.finalTime || '--'; showScreen('end'); }
     else {
@@ -775,10 +862,11 @@
       syncStatus(true);
     }
 
-    // Funciona sin conexión en el túnel: el service worker guarda el escáner RA y sus archivos
-    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      window.addEventListener('load', () => setTimeout(() => navigator.serviceWorker.register('sw.js').catch(() => {}), 3000));
-    }
+    // Funciona sin conexión en el túnel: el service worker guarda el escáner RA y sus archivos (~3 MB). Esa descarga NO debe
+    // competir con el registro del equipo (en la calle, con poca cobertura, lo retrasaría): se hace cuando el equipo ya está
+    // registrado, o como mucho a los 25 s si aún no se ha registrado (y sin pisar un registro en curso).
+    if (S && S.state !== 'start') pedirServiceWorker(2500);
+    window.addEventListener('load', () => setTimeout(function esperar() { if (busy) setTimeout(esperar, 8000); else pedirServiceWorker(0); }, 25000));
   }
 
   init();
