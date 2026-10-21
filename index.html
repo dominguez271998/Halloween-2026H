@@ -176,7 +176,7 @@
     <div class="spinner"></div>
 
     <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.4;">
-      Acercaos a la mesa de control de la organización para recibir la salida oficial. Esta pantalla avisará sola cuando empecéis.
+      Acercaos a la mesa de control de la organización en el Teatro Multiusos para recibir la salida oficial. Esta pantalla avisará sola cuando empecéis.
     </p>
     <p id="wait-warning" class="error hidden" style="margin-top: 12px;"></p>
     <button type="button" id="btn-cancel" class="btn-link">¿Te has equivocado de nombre? Cancelar registro</button>
@@ -379,7 +379,7 @@
     $('progress-indicator').style.color = final ? 'var(--success)' : '';
     $('assigned-station').textContent = target.title;
     $('station-instructions').textContent = final
-      ? '¡Has completado las 4 estaciones! Regresa de inmediato al Cortijo Moreno con la Organización para sellar tu victoria.'
+      ? (BASE.desc || '¡Has completado las 4 estaciones! Regresa de inmediato al Teatro Multiusos con la Organización para sellar tu victoria.')
       : target.desc;
     $('label-code').textContent = final ? 'Código Final de la Organización:' : 'Palabra Clave de la Estación:';
     $('station-code').placeholder = final ? 'Introduce el código final...' : 'Introduce la palabra clave...';
@@ -426,8 +426,7 @@
     S = null; store.del(KEY); store.del(KEY_PENDING);
     lockUntil = 0; curLat = curLng = null;
     $('btn-start').disabled = false; $('btn-start').textContent = 'Registrar Equipo';
-    $('btn-validate').disabled = false; setGameStatus('', '');
-    $('team-name').value = oldName;
+    $('btn-validate').disabled = false; setGameStatus('', '');$('team-name').value = oldName;
     const n = $('lost-notice');
     n.textContent = notice || ''; n.classList.toggle('hidden', !notice);
     $('register-error').classList.add('hidden');
@@ -465,8 +464,7 @@
     if (busy) return;
     const btn = $('btn-start');
     const name = $('team-name').value.normalize('NFC').replace(/\s+/g, ' ').trim();
-    const members = parseInt($('team-members').value, 10);
-    $('register-error').classList.add('hidden');
+    const members = parseInt($('team-members').value, 10);$('register-error').classList.add('hidden');
 
     const bad = validateName(name);
     if (bad) { showRegisterError(bad); return; }
