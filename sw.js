@@ -9,7 +9,7 @@
  *
  * Si cambias este archivo (por ejemplo para añadir una imagen a la lista), sube también VERSION.
  */
-const VERSION = 'sombra-v4';
+const VERSION = 'sombra-v5';
 
 const IMPRESCINDIBLES = [
   'ar-test.html', 'index.html', 'config.js',
