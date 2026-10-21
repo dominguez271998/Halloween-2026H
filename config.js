@@ -23,7 +23,7 @@ window.ESCAPE_CONFIG = {
       id: 1,
       title: "Estación 2: Túnel de las Vías del Tren",
       name: "Túnel Vías del Tren",
-      lat: 36.884444, lng: -2.436750,                     // punto exacto del túnel (36°53'04.0"N 2°26'12.3"W)
+      lat: 36.884560, lng: -2.436693,                    // punto exacto del túnel (enlace de la organización)
       desc: "Cruza el túnel con cuidado. Usa el botón 'Escanear RA' para revisar los símbolos de las paredes. ¡Huye de la motosierra y encuentra el código numérico verdadero!",
       staff: "Prueba: Motosierra + Búsqueda RA"
     },
@@ -31,7 +31,7 @@ window.ESCAPE_CONFIG = {
       id: 2,
       title: "Estación 3: Calle Oscura (Paso Sombrío)",
       name: "Calle Oscura",
-      lat: 36.885187, lng: -2.435430,                     // punto exacto de Calle Oscura (enlace de Maps de la organización)
+      lat: 36.885187, lng: -2.435430,                    // punto exacto de Calle Oscura (enlace de Maps de la organización)
       desc: "El actor te señalará la primera cifra. Encuentra las dos cifras ocultas en la calle con tu linterna y deduce el orden correcto. Al acertar, el actor te dirá la última cifra misteriosa según la hora exacta.",
       staff: "Prueba: Búsqueda de números + Orden con el actor"
     },
@@ -45,11 +45,14 @@ window.ESCAPE_CONFIG = {
     }
   ],
 
+  // Zona de inicio y de fin: Teatro Multiusos de Huércal.
+  // "salida" y "regreso" son las frases que ve el equipo ("... en el Teatro Multiusos", "... al Teatro Multiusos").
   BASE: {
-    title: "🏁 Punto de Inicio y Meta: Teatro Multiusos",
+    title: "🏁 Inicio y Fin: Teatro Multiusos",
     name: "Base: Teatro Multiusos",
-    lat: 36.882733, lng: -2.440048,                       // Paseo del Generalife, 40 (Teatro Multiusos de Huércal de Almería)
-    desc: "¡Has completado las 4 estaciones! Regresa de inmediato al Teatro Multiusos con la Organización para sellar tu victoria.",
-    staff: "Punto de Inicio, Control y Meta"
+    lat: 36.882668, lng: -2.440246,
+    salida: "en el Teatro Multiusos",
+    regreso: "al Teatro Multiusos",
+    staff: "Punto de Inicio y Salida"
   }
 };

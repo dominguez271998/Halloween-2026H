@@ -44,24 +44,9 @@
       if (!CFG) { document.body.innerHTML = '<p style="padding:24px;color:#ef4444">No se ha podido cargar config.js.</p>'; return; }
       const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 
-      // Las 4 estaciones más la Base (Teatro Multiusos) como punto de Inicio y Meta independiente.
-      const places = CFG.STATIONS.map((s, i) => ({
-        label: 'Estación ' + (i + 1),
-        name: s.title.replace(/^Estación \d+:\s*/, ''),
-        lat: s.lat,
-        lng: s.lng,
-        approx: !!s.approx
-      }));
-
-      if (CFG.BASE) {
-        places.unshift({
-          label: '🏁 Salida y Meta (Mesa de Control)',
-          name: CFG.BASE.name.replace(/^Base:\s*/, '') || 'Teatro Multiusos',
-          lat: CFG.BASE.lat,
-          lng: CFG.BASE.lng,
-          approx: !!CFG.BASE.approx
-        });
-      }
+      // Las mismas estaciones que usa el juego (config.js), más la zona de inicio y fin (BASE).
+      const places = CFG.STATIONS.map((s, i) => ({ label: 'Estación ' + (i + 1), name: s.title.replace(/^Estación \d+:\s*/, ''), lat: s.lat, lng: s.lng, approx: !!s.approx }));
+      if (CFG.BASE) places.unshift({ label: 'Inicio y Fin', name: CFG.BASE.name.replace(/^Base:\s*/, ''), lat: CFG.BASE.lat, lng: CFG.BASE.lng, approx: !!CFG.BASE.approx });
 
       document.getElementById('grid').innerHTML = places.map((p) => `
         <div class="loc-card">
